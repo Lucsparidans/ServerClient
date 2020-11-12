@@ -34,7 +34,7 @@ public class Client {
     private String port;
 
     // actions
-    private JSONArray actions;
+    private String[] actions;
 
     public Client(String file) {
 
@@ -65,7 +65,7 @@ public class Client {
             this.ip = (String) server.get("ip");
             this.port = (String) server.get("port");
 
-            this.actions = (JSONArray) jsonObject.get("actions");
+            this.actions = (String[]) jsonObject.get("actions");
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -73,7 +73,24 @@ public class Client {
 
     }
 
-    public void startClient() {
+    public void startClient() throws IOException{
+        s = new Socket("localhost", 4999);
+        pr = new PrintWriter(s.getOutputStream());
+
+        pr.println(1);
+        pr.println(id);
+        pr.println(name);
+        pr.println(name);
+        pr.println(publicKey);
+        pr.flush();
+
+
+        for (String action: actions) {
+//            String[] a = action.split("\[");
+            pr.println("3");
+            pr.println("abc");
+            pr.println(id);
+        }
 //        s = new Socket("localhost", 4999);
 //        pr = new PrintWriter(s.getOutputStream());
 //
