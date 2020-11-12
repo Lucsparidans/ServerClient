@@ -10,7 +10,7 @@ import java.util.ArrayList;
 
 public class server {
 
-    private static ArrayList<ClientInfo> db =new ArrayList();
+    private static ArrayList<ClientInfo> db = new ArrayList();
     private static ArrayList<Message> messages = new ArrayList();
 
     public static void main(String[] args) throws IOException {
@@ -42,48 +42,24 @@ public class server {
 
             if (type == (1)) {
                 // REGISTRATION
-
-                String id = bf.readLine();
-                String firstName = bf.readLine();
-                String lastName = bf.readLine();
-                String publicKey = bf.readLine();
-                registration(id, firstName, lastName, publicKey);
+                String resp = registration(bf);
 
                 // Send message to Client
-                pr.println("Success");
+                pr.println(resp);
                 pr.flush();
 
             } else if (type == (2)) {
                 // CHECK FOR MESSAGES
-                String clientId = bf.readLine();
-                ArrayList<String> myMessages = getMyMessages(clientId);
-                int messagesNumber = myMessages.size();
-
-                if (messagesNumber > 0) {
-                    // Send messages number to Client
-                    pr.println(messagesNumber);
-
-                    for (String mes: myMessages) {
-                        // Send messages to client
-                        pr.println(mes);
-
-                        System.out.println(mes);
-
-                        pr.flush();
-                    }
-                } else {
-                    // Send to Client that are no messages
-                    pr.println("500");
-                    pr.flush();
-                }
+                checkMessages(bf, pr);
 
             } else if (type == 3) {
-                // Send message
-                String fromId = bf.readLine();
-                String toId = bf.readLine();
-                String message = bf.readLine();
+                // SEND MESSAGE
+                String resp = sendMessage(bf);
 
-                sendMessage(fromId, toId, message);
+                // Send message to Client
+                pr.println(resp);
+                pr.flush();
+
             } else {
                 // Send message to Client
                 pr.println("Error No action recognized");
@@ -92,9 +68,53 @@ public class server {
         }
     }
 
-    public static void registration(String id, String firstName, String lastName, String publicKey ) {
+    public static String registration(BufferedReader bf) throws IOException {
+
+        String id = bf.readLine();
+        String firstName = bf.readLine();
+        String lastName = bf.readLine();
+        String publicKey = bf.readLine();
+
         ClientInfo c = new ClientInfo(id, firstName, lastName, publicKey);
         db.add(c);
+
+        return "Success";
+    }
+
+    public static void checkMessages(BufferedReader bf, PrintWriter pr) throws IOException {
+        // CHECK FOR MESSAGES
+        String clientId = bf.readLine();
+        ArrayList<String> myMessages = getMyMessages(clientId);
+        int messagesNumber = myMessages.size();
+
+        if (messagesNumber > 0) {
+            // Send messages number to Client
+            pr.println(messagesNumber);
+
+            for (String mes : myMessages) {
+                // Send messages to client
+                pr.println(mes);
+
+                System.out.println(mes);
+
+                pr.flush();
+            }
+        } else {
+            // Send to Client that are no messages
+            pr.println("500");
+            pr.flush();
+        }
+    }
+
+    public static String sendMessage(BufferedReader bf) throws IOException {
+        // Send message
+        String fromId = bf.readLine();
+        String toId = bf.readLine();
+        String message = bf.readLine();
+
+        messages.add(new Message(fromId, toId, message));
+
+        return "Success";
     }
 
     public static ArrayList<String> getMyMessages(String id) {
@@ -117,9 +137,6 @@ public class server {
         return "Error";
     }
 
-    public static void sendMessage(String fromId, String toId, String message) {
-        messages.add(new Message(fromId, toId, message));
-    }
 
 
 }
