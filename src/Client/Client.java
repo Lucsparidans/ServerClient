@@ -17,6 +17,9 @@ public class Client {
     private Socket s;
     private PrintWriter pr;
 
+    private InputStreamReader in;
+    private BufferedReader bf;
+
     // Client Information
     // general
     private String duration;
@@ -34,7 +37,7 @@ public class Client {
     private String port;
 
     // actions
-    private String[] actions;
+    private JSONArray actions;
 
     public Client(String file) {
 
@@ -52,10 +55,9 @@ public class Client {
             this.timeout = (String) general.get("timeout");
 
             JSONObject person = (JSONObject) jsonObject.get("person");
-            this.id =  (String) person.get("id");;
+            this.id = (String) person.get("id");
+            ;
             this.name = (String) person.get("name");
-
-            System.out.println(id + name);
 
             JSONObject keys = (JSONObject) person.get("keys");
             this.privateKey = (String) keys.get("private");
@@ -65,94 +67,126 @@ public class Client {
             this.ip = (String) server.get("ip");
             this.port = (String) server.get("port");
 
-            this.actions = (String[]) jsonObject.get("actions");
+            this.actions = (JSONArray) jsonObject.get("actions");
+
+            // REGISTRATION
+            s = new Socket("localhost", 4999);
+            pr = new PrintWriter(s.getOutputStream());
+
+            pr.println(1);
+            pr.println(id);
+            pr.println(name);
+            pr.println(name);
+            pr.println(publicKey);
+            pr.flush();
+
+            // Read message from Server
+            in = new InputStreamReader(s.getInputStream());
+            bf = new BufferedReader(in);
+
+            System.out.println(bf.readLine());
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+
     }
 
-    public void startClient() throws IOException{
-        s = new Socket("localhost", 4999);
-        pr = new PrintWriter(s.getOutputStream());
-
-        pr.println(1);
-        pr.println(id);
-        pr.println(name);
-        pr.println(name);
-        pr.println(publicKey);
-        pr.flush();
+    public void startClient() throws IOException {
+        long startingTime = System.currentTimeMillis();
 
 
-        for (String action: actions) {
-//            String[] a = action.split("\[");
-            pr.println("3");
-            pr.println("abc");
-            pr.println(id);
+        // EXECUTE ACTIONS
+        for (int i = 0; i < this.actions.size(); i++) {
+            s = new Socket("localhost", 4999);
+            pr = new PrintWriter(s.getOutputStream());
+
+            // Read message from Server
+            in = new InputStreamReader(s.getInputStream());
+            bf = new BufferedReader(in);
+
+            String a = this.actions.get(i).toString();
+            String[] parts = a.split("\\[", 3);
+
+            String actionType = parts[0];
+            actionType = actionType.replace(" ", "");
+
+            String toId = parts[1];
+            toId = toId.replace("] ", "");
+
+            String m = parts[2];
+            m = m.replace("]", "");
+
+
+            if (actionType.equals("SEND")) {
+                if (!toId.contains(",")) {
+                    pr.println(3);
+                    pr.println(this.id);
+                    pr.println(toId);
+                    pr.println(m);
+                    pr.flush();
+
+
+                    System.out.println(bf.readLine());
+                } else {
+
+
+                    String[] name = toId.split(",", 2);
+                    String firstName = name[0].replace(" ", "");
+                    String lastName = name[1].replace(" ", "");
+
+                    pr.println(4);
+                    pr.println(this.id);
+                    pr.println(firstName);
+                    pr.println(lastName);
+                    pr.println(m);
+                    pr.flush();
+
+                    System.out.println(bf.readLine());
+                }
+            }
+
         }
-//        s = new Socket("localhost", 4999);
-//        pr = new PrintWriter(s.getOutputStream());
-//
-//
-//        // Constantly checking for new messages
-//        while (true) {
-//
-//            // Send get mesages request to server
-//            pr.println(2);
-//            pr.println("abc");
-//
-//            // Send message
-//            pr.flush();
-//
-//            try {
-//                // Read message from Server
-//                InputStreamReader in = new InputStreamReader(s.getInputStream());
-//                BufferedReader bf = new BufferedReader(in);
-//
-//                int messagesNumber = Integer.parseInt(bf.readLine());
-//
-//                if (messagesNumber != 500) {
-//                    for (int i = 0; i < messagesNumber; i++) {
-//                        String message = bf.readLine();
-//                        System.out.println("Message " + i + " : " + message);
-//                    }
-//                }
-//            } catch (IOException e) {
-//                System.out.println(e);
-//            }
-//        }
 
-//        while (true) {
-//            System.out.println("Please enter the action");
-//            // Enter data using BufferReader
-//            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-//
-//            System.out.println("Please enter the action");
-//
-//
-//            // Reading data using readLine
-//            String action = "SEND";
-//
-//            if (action.equals("SEND")) {
-//                System.out.println("Who you want to send the message to?");
-//                String id = "abc";
-//
-//                System.out.println("Please enter the message");
-//                String message = "hey broooo";
-//
-//
-//                // Write message
-//                pr.println("3");
-//                pr.println("abc");
-//                pr.println(id);
-//                pr.println(message);
-//                // Send message
-//                pr.flush();
-//            }
-//
-//        }
+        // CHECK FOR MESSAGES
+        double milliSeconds = Double.parseDouble(this.duration) * 1000;
+        System.out.println("checking for messages..");
+        // Constantly checking for new messages
+        while (System.currentTimeMillis() < startingTime + milliSeconds) {
+
+
+            s = new Socket("localhost", 4999);
+            pr = new PrintWriter(s.getOutputStream());
+
+            // Read message from Server
+            in = new InputStreamReader(s.getInputStream());
+            bf = new BufferedReader(in);
+
+            // Send get mesages request to server
+            pr.println(2);
+            pr.println(this.id);
+
+            // Send message
+            pr.flush();
+
+            try {
+
+                int messagesNumber = Integer.parseInt(bf.readLine());
+
+                if (messagesNumber != 500) {
+                    for (int j = 0; j < messagesNumber; j++) {
+                        String message = bf.readLine();
+                        System.out.println("Message " + j + " : " + message);
+                    }
+                }
+            } catch (IOException e) {
+                System.out.println(e);
+            }
+        }
+
+        System.out.println("duration over");
     }
-
+    
 
 }

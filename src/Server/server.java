@@ -53,14 +53,23 @@ public class server {
                 checkMessages(bf, pr);
 
             } else if (type == 3) {
-                // SEND MESSAGE
-                String resp = sendMessage(bf);
+                // SEND MESSAGE WITH ID
+                String resp = sendMessage(bf, false);
 
                 // Send message to Client
                 pr.println(resp);
                 pr.flush();
 
+            } else if (type == 4) {
+                // SEND MESSAGE WITH NAME
+                String resp = sendMessage(bf, true);
+
+                System.out.println(resp);
+                // Send message to Client
+                pr.println(resp);
+                pr.flush();
             } else {
+
                 // Send message to Client
                 pr.println("Error No action recognized");
                 pr.flush();
@@ -75,10 +84,14 @@ public class server {
         String lastName = bf.readLine();
         String publicKey = bf.readLine();
 
+        for (ClientInfo c: db) {
+            if (c.getId().equals(id)) return "Client has been already registered";
+        }
+
         ClientInfo c = new ClientInfo(id, firstName, lastName, publicKey);
         db.add(c);
 
-        return "Success";
+        return "Successful registration";
     }
 
     public static void checkMessages(BufferedReader bf, PrintWriter pr) throws IOException {
@@ -106,15 +119,33 @@ public class server {
         }
     }
 
-    public static String sendMessage(BufferedReader bf) throws IOException {
-        // Send message
+    public static String sendMessage(BufferedReader bf, boolean nameId) throws IOException {
+
+        if (nameId) {
+            String fromId = bf.readLine();
+
+            String firstName = bf.readLine();
+            String lastName = bf.readLine();
+            String toId = getIdByName(firstName, lastName);
+
+            String message = bf.readLine();
+
+            if (!toId.equals("-1")) {
+                messages.add(new Message(fromId, toId, message));
+
+                return "Success message sent";
+            }
+            return "User not found";
+        }
+
+
         String fromId = bf.readLine();
         String toId = bf.readLine();
         String message = bf.readLine();
 
         messages.add(new Message(fromId, toId, message));
 
-        return "Success";
+        return "Success message sent";
     }
 
     public static ArrayList<String> getMyMessages(String id) {
@@ -135,6 +166,13 @@ public class server {
             }
         }
         return "Error";
+    }
+
+    public  static String getIdByName(String firstName, String lastName) {
+        for (ClientInfo c: db) {
+            if (c.getFirstName().equals(firstName) && c.getLastName().equals(lastName)) return c.getId();
+        }
+        return "-1";
     }
 
 
