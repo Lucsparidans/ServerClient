@@ -1,5 +1,7 @@
 package Client;
 
+import Shared.Packet;
+import Shared.PacketLogger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -9,11 +11,10 @@ import java.net.Socket;
 
 public class Client {
 
-    private Socket s;
-    private PrintWriter pr;
+    private final PacketLogger pktLog;
 
-    private InputStreamReader in;
-    private BufferedReader bf;
+    private ObjectInputStream objectInputStream;
+    private ObjectOutputStream objectOutputStream;
 
     // Client Information
     // general
@@ -35,6 +36,7 @@ public class Client {
     private JSONArray actions;
 
     public Client(String file) {
+        pktLog = new PacketLogger();
 
         JSONParser parser = new JSONParser();
         try {
@@ -51,7 +53,6 @@ public class Client {
 
             JSONObject person = (JSONObject) jsonObject.get("person");
             this.id = (String) person.get("id");
-            ;
             this.name = (String) person.get("name");
 
             JSONObject keys = (JSONObject) person.get("keys");
@@ -65,21 +66,22 @@ public class Client {
             this.actions = (JSONArray) jsonObject.get("actions");
 
             // REGISTRATION
-            s = new Socket("localhost", 4999);
-            pr = new PrintWriter(s.getOutputStream());
+            Socket s = new Socket("localhost", 4999);
+            objectInputStream = new ObjectInputStream(s.getInputStream());
+            objectOutputStream = new ObjectOutputStream(s.getOutputStream());
 
-            pr.println(1);
-            pr.println(id);
-            pr.println(name);
-            pr.println(name);
-            pr.println(publicKey);
-            pr.flush();
+            objectOutputStream.writeObject(pktLog.newOut(
+                    new Packet(1,
+                            id,
+                            ip,
+                            null,
+                            name,
+                            name,
+                            publicKey)));
 
             // Read message from Server
-            in = new InputStreamReader(s.getInputStream());
-            bf = new BufferedReader(in);
-
-            System.out.println(bf.readLine());
+            pktLog.newIn(objectInputStream.readObject());
+            System.out.println(pktLog.getLastIn().getData());
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -88,20 +90,19 @@ public class Client {
 
     }
 
-    public void startClient() throws IOException {
+    public void startClient() throws IOException, ClassNotFoundException {
         long startingTime = System.currentTimeMillis();
 
 
         // EXECUTE ACTIONS
-        for (int i = 0; i < this.actions.size(); i++) {
-            s = new Socket("localhost", 4999);
-            pr = new PrintWriter(s.getOutputStream());
+        for (Object action : this.actions) {
+//            s = new Socket("localhost", 4999); This is bad since there is already an open socket which has not yet been
+//            closed which will cause memory leaks!
 
             // Read message from Server
-            in = new InputStreamReader(s.getInputStream());
-            bf = new BufferedReader(in);
+            pktLog.newIn(objectInputStream.readObject());
 
-            String a = this.actions.get(i).toString();
+            String a = action.toString();
             String[] parts = a.split("\\[", 3);
 
             String actionType = parts[0];
@@ -116,28 +117,29 @@ public class Client {
 
             if (actionType.equals("SEND")) {
                 if (!toId.contains(",")) {
-                    pr.println(3);
-                    pr.println(this.id);
-                    pr.println(toId);
-                    pr.println(m);
-                    pr.flush();
-
-
-                    System.out.println(bf.readLine());
+                    objectOutputStream.writeObject(pktLog.newOut(
+                            new Packet(3,
+                                    id,
+                                    toId,
+                                    m,
+                                    name,
+                                    name,
+                                    null)));
                 } else {
 
                     String[] name = toId.split(",", 2);
                     String firstName = name[0].replace(" ", "");
                     String lastName = name[1].replace(" ", "");
 
-                    pr.println(4);
-                    pr.println(this.id);
-                    pr.println(firstName);
-                    pr.println(lastName);
-                    pr.println(m);
-                    pr.flush();
-
-                    System.out.println(bf.readLine());
+                    objectOutputStream.writeObject(pktLog.newOut(
+                            new Packet(4,
+                                    id,
+                                    ip,
+                                    m,
+                                    firstName,
+                                    lastName,
+                                    null)));
+                    System.out.println(pktLog.newIn(objectInputStream.readObject()));
                 }
             }
 
@@ -150,32 +152,32 @@ public class Client {
         while (System.currentTimeMillis() < startingTime + milliSeconds) {
 
 
-            s = new Socket("localhost", 4999);
-            pr = new PrintWriter(s.getOutputStream());
+//            s = new Socket("localhost", 4999); Same story here, risk of memory leaks!
 
             // Read message from Server
-            in = new InputStreamReader(s.getInputStream());
-            bf = new BufferedReader(in);
+            pktLog.newIn(objectInputStream.readObject());
 
-            // Send get mesages request to server
-            pr.println(2);
-            pr.println(this.id);
-
-            // Send message
-            pr.flush();
-
+            // Send get messages request to server
+            objectOutputStream.writeObject(pktLog.newOut(
+                    new Packet(2,
+                            id,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null)));
             try {
-
-                int messagesNumber = Integer.parseInt(bf.readLine());
+                pktLog.newIn(objectInputStream.readObject());
+                int messagesNumber = pktLog.getLastIn().getType();
 
                 if (messagesNumber != 500) {
                     for (int j = 0; j < messagesNumber; j++) {
-                        String message = bf.readLine();
+                        String message = pktLog.getLastIn().getData();
                         System.out.println("Message " + j + " : " + message);
                     }
                 }
             } catch (IOException e) {
-                System.out.println(e);
+                e.printStackTrace();
             }
         }
 
