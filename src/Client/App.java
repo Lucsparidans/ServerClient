@@ -12,8 +12,8 @@ public class App {
         try {
             c.startClient();
             c2.startClient();
-        } catch (IOException e) {
-            System.out.println(e);
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
         }
             
     }
