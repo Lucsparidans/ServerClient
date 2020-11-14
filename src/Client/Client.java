@@ -6,11 +6,6 @@ import org.json.simple.parser.JSONParser;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.Iterator;
-import java.util.logging.FileHandler;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
-
 
 public class Client {
 
@@ -130,7 +125,6 @@ public class Client {
 
                     System.out.println(bf.readLine());
                 } else {
-
 
                     String[] name = toId.split(",", 2);
                     String firstName = name[0].replace(" ", "");
