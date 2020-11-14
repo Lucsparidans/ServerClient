@@ -6,6 +6,8 @@ import org.json.simple.parser.JSONParser;
 
 import java.io.*;
 import java.net.Socket;
+<<<<<<< HEAD
+>>>>>>> bd229352a00b640fa424335afb18402c30542726
 
 public class Client {
 
