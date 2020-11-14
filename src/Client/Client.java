@@ -6,7 +6,8 @@ import org.json.simple.parser.JSONParser;
 
 import java.io.*;
 import java.net.Socket;
-
+<<<<<<< HEAD
+>>>>>>> bd229352a00b640fa424335afb18402c30542726
 
 public class Client {
 
@@ -126,7 +127,6 @@ public class Client {
 
                     System.out.println(bf.readLine());
                 } else {
-
 
                     String[] name = toId.split(",", 2);
                     String firstName = name[0].replace(" ", "");
