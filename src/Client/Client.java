@@ -6,10 +6,6 @@ import org.json.simple.parser.JSONParser;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.Iterator;
-import java.util.logging.FileHandler;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 
 
 public class Client {
