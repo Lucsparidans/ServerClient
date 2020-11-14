@@ -8,10 +8,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 
-public class server {
+public class Server {
 
-    private static ArrayList<ClientInfo> db = new ArrayList();
-    private static ArrayList<Message> messages = new ArrayList();
+    private static final ArrayList<ClientInfo> db = new ArrayList<>();
+    private static final ArrayList<Message> messages = new ArrayList<>();
 
     public static void main(String[] args) throws IOException {
         ServerSocket ss = new ServerSocket(4999);
@@ -25,6 +25,7 @@ public class server {
         messages.add(m3);
 
 
+        //TODO: Provide exit clause for this loop
         while (true) {
             System.out.println("Waiting for a client..");
             // Accept Client
@@ -149,7 +150,7 @@ public class server {
     }
 
     public static ArrayList<String> getMyMessages(String id) {
-        ArrayList myMessages = new ArrayList();
+        ArrayList<String> myMessages = new ArrayList<>();
 
         for (Message mes : messages) {
             if (mes.getToId().equals(id)) {

@@ -22,6 +22,13 @@ public class Packet implements Serializable {
         this.publicKey = publicKey;
     }
 
+    @Override
+    public String toString() {
+        return String.format(
+                "Packet[Type:%d\nSenderID: %s\nDestinationID: %s\nData: %s\nFirstName: %s\nLastName: %s\nPublicKey: %s]\n",
+                type,senderID,destID,data,firstName,lastName,publicKey);
+    }
+
     public int getType() {
         return type;
     }
