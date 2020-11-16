@@ -1,5 +1,183 @@
 package Server;
 
+import Shared.Packet;
+
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+
+public class server {
+
+    private static ArrayList<ClientInfo> db = new ArrayList();
+    private static ArrayList<Message> messages = new ArrayList();
+
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        ServerSocket ss = new ServerSocket(4999);
+
+        ObjectInputStream inputStream;
+        ObjectOutputStream outputStream;
+        // Test
+        Message m1 = new Message("abc", "abc", "Hey!");
+        messages.add(m1);
+        Message m2 = new Message("abc", "abc", "How are you bro?");
+        messages.add(m2);
+        Message m3 = new Message("abc", "abc", "What are you doing?");
+        messages.add(m3);
+
+        while (true) {
+            System.out.println("Waiting for a client..");
+            // Accept Client
+            Socket s = ss.accept();
+            System.out.println("Client Connected");
+
+            outputStream = new ObjectOutputStream(s.getOutputStream());
+            inputStream = new ObjectInputStream(s.getInputStream());
+
+            // Read message from client
+            Packet packetIn = (Packet) inputStream.readObject();
+
+            System.out.println("Request of type : " + packetIn.getType());
+
+            if (packetIn.getType() == (1)) {
+                // REGISTRATION
+                String resp = registration(packetIn);
+
+                // Send message to Client
+                outputStream.writeObject(new Packet(1, null, packetIn.getSenderID(),resp,null,null,null));
+            } else if (packetIn.getType() == (2)) {
+                // CHECK FOR MESSAGES
+                checkMessages(bf, pr);
+
+            } else if (packetIn.getType() == 3) {
+                // SEND MESSAGE WITH ID
+                String resp = sendMessage(packetIn, false);
+
+                // Send message to Client
+                pr.println(resp);
+                pr.flush();
+
+            } else if (type == 4) {
+                // SEND MESSAGE WITH NAME
+                String resp = sendMessage(bf, true);
+
+                System.out.println(resp);
+                // Send message to Client
+                pr.println(resp);
+                pr.flush();
+            } else {
+
+                // Send message to Client
+                pr.println("Error No action recognized");
+                pr.flush();
+            }
+        }
+    }
+
+    public static String registration(Packet packetIn) throws IOException {
+
+        for (ClientInfo c: db) {
+            if (c.getId().equals(packetIn.getSenderID())) return "Client has been already registered";
+        }
+
+        ClientInfo c = new ClientInfo(packetIn.getSenderID(), packetIn.getFirstName(), packetIn.getLastName(), packetIn.getPublicKey());
+        db.add(c);
+
+        return "Successful registration";
+    }
+
+    public static void checkMessages(BufferedReader bf, PrintWriter pr) throws IOException {
+        // CHECK FOR MESSAGES
+        String clientId = bf.readLine();
+        ArrayList<String> myMessages = getMyMessages(clientId);
+        int messagesNumber = myMessages.size();
+
+        if (messagesNumber > 0) {
+            // Send messages number to Client
+            pr.println(messagesNumber);
+
+            for (String mes : myMessages) {
+                // Send messages to client
+                pr.println(mes);
+
+                System.out.println(mes);
+
+                pr.flush();
+            }
+        } else {
+            // Send to Client that are no messages
+            pr.println("500");
+            pr.flush();
+        }
+    }
+
+    public static String sendMessage(Packet packetOut, boolean nameId) throws IOException {
+
+        if (nameId) {
+            String fromId = bf.readLine();
+
+            String firstName = bf.readLine();
+            String lastName = bf.readLine();
+            String toId = getIdByName(firstName, lastName);
+
+            String message = bf.readLine();
+
+            if (!toId.equals("-1")) {
+                messages.add(new Message(fromId, toId, message));
+
+                return "Success message sent";
+            }
+            return "User not found";
+        }
+
+
+        String fromId = bf.readLine();
+        String toId = bf.readLine();
+        String message = bf.readLine();
+
+        messages.add(new Message(fromId, toId, message));
+
+        return "Success message sent";
+    }
+
+    public static ArrayList<String> getMyMessages(String id) {
+        ArrayList myMessages = new ArrayList();
+
+        for (Message mes : messages) {
+            if (mes.getToId().equals(id)) {
+                myMessages.add(mes.getMessage());
+            }
+        }
+        return myMessages;
+    }
+
+    public static String getKeyById(String id) {
+        for (ClientInfo c : db) {
+            if (c.getId().equals(id)) {
+                return c.getPublicKey();
+            }
+        }
+        return "Error";
+    }
+
+    public  static String getIdByName(String firstName, String lastName) {
+        for (ClientInfo c: db) {
+            if (c.getFirstName().equals(firstName) && c.getLastName().equals(lastName)) return c.getId();
+        }
+        return "-1";
+    }
+
+
+
+}
+
+
+
+///// OLD SERVER CLASS IF YOU WANT TO RUN
+
+
+/*package Server;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -179,3 +357,4 @@ public class Server {
 
 
 }
+*/
