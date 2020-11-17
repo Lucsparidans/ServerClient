@@ -7,6 +7,7 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
 import java.io.*;
+import java.net.ConnectException;
 import java.net.Socket;
 
 public class Client {
@@ -65,8 +66,16 @@ public class Client {
 
             this.actions = (JSONArray) jsonObject.get("actions");
 
-            // REGISTRATION
-            Socket s = new Socket("localhost", 4999);
+            Socket s = null;
+            while(s ==null) {
+                // REGISTRATION
+                try {
+                    s = new Socket("localhost", 4999);
+                    System.out.println("Timeout on connection request"); //Server was not open yet probably
+                } catch (ConnectException e) {
+                    Thread.sleep(100);
+                }
+            }
             objectInputStream = new ObjectInputStream(s.getInputStream());
             objectOutputStream = new ObjectOutputStream(s.getOutputStream());
 
