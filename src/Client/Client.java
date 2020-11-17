@@ -73,7 +73,7 @@ public class Client {
             objectOutputStream.writeObject(pktLog.newOut(
                     new Packet(1,
                             id,
-                            ip,
+                            null,
                             null,
                             name,
                             name,
