@@ -1,18 +1,23 @@
 package Server;
 
+import org.bouncycastle.asn1.*;
+import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
+
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import java.io.IOException;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
 public class TestEncryption {
 
-    public static void main(String[] args) throws NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InvalidKeySpecException {
+    public static void main(String[] args) throws NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InvalidKeySpecException, IOException {
         String plainText = "Fuck you";
 
         String stringPubKey = "MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA33bh0ZPszl9wxWqP5TWtvO44QrqSdNA3yoPCRf8gBXvthOK9QK/xLART+q9yPIXjdUyR855GeAiPXvbee7IjzgY1ZGKBfpTxojPn13M+xRCae0SCezTWGZ1sxYYB1FRUsfQaTzzPC6wgJrYwh4BoRruWTruXzq3UbtQxmDKqCO2D0nIzrnubZQLfXBFMyGkVnqghiGblbXd7TcT6eJA7kGLnrCWhgt/TlLQwudOZ1VdfB7cHcNX8gCHV4E9rEoPMTEoc+kzXNEyWkdnivuNg7z1sGW2jDuHCcOEYJxwq6UaRn3qwe54VfkkMonR+d5UYuwJIbWuUhog5jcUbCQ5v8YhThk3vgiE6sDulAx1cOtCBk1JofTTnNOxzLOnxz82UUBYB0hUXRsWl8U15wELXIAw5glUzc0gVLMJeiLKwye7zCebpEL+HhKtTBcW6q7VWV4cu3dls18Tf+UjtMB+wRvh25y0mBNK+odKmVmko2Lf+IaAsbYvcjQTqxCVvIGqvQ9683RFBu1cPQkyiy60KldkRWVjTei98PjQafcqhxTAgUCBByoNuzTn+w0Mi1By4kIWkqOXEQWUQ0aprHPsk7v//aIJM2rBltcGk0EedwWvoiGaKzjdqIkXEP7RDM/h2V6VpYYAuPxsnSx1yPWfnixcoefQDDWXvBcvuvuRtAmcCAwEAAQ==";
@@ -43,56 +48,28 @@ public class TestEncryption {
         return encryptedString;
     }
 
-    public static String decrypt(String stringPrvKey, String text) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+    public static String decrypt(String stringPrvKey, String text) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException, IOException {
 
-        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(Base64.getDecoder().decode(stringPrvKey.getBytes()));
+        byte[] data = Base64.getDecoder().decode(stringPrvKey.getBytes());
+
+        java.security.Security.addProvider(
+                new org.bouncycastle.jce.provider.BouncyCastleProvider()
+        );
+
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(data);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         PrivateKey privateKey = keyFactory.generatePrivate(keySpec);
 
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.DECRYPT_MODE, privateKey);
 
-        String decryptedString = new String(cipher.doFinal(Base64.getDecoder().decode(text.getBytes())));
+        byte [] data2 = Base64.getDecoder().decode(text.getBytes());
+
+        byte[] ciphertext = cipher.doFinal(data2);
+
+        String decryptedString = new String(ciphertext);
 
         return decryptedString;
     }
-
-//    public static String encrypt(String pubKey, String text) {
-//        int n = pubKey.length();
-//        String cipherText = "";
-//
-//        for (int i = 0; i < text.length(); i++) {
-//            int p = (int) text.charAt(i);
-//            int k = (int) pubKey.charAt(i);
-//            int c = (int) Math.floor(Math.pow(p, k) % n);
-//
-//            char ascii = (char) c;
-//
-//            System.out.println(text.charAt(i) + " + " + pubKey.charAt(i) + " = ( " + c + " )" + ascii);
-//
-//            cipherText = cipherText + ascii;
-//        }
-//
-//
-//        return cipherText;
-//    }
-
-//    public static String decrypt(String prvKey, String text) {
-//        int n = prvKey.length();
-//        String plainText = "";
-//
-//        for (int i = 0; i < text.length(); i++) {
-//            int p = (int) text.charAt(i);
-//            int k = (int) prvKey.charAt(i);
-//            int c = (int) Math.floor(Math.pow(p, k) % n);
-//
-//            char ascii = (char) c;
-//
-//            plainText = plainText + ascii;
-//        }
-//
-//
-//        return plainText;
-//    }
 
 }
