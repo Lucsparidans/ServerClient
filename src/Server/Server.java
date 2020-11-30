@@ -56,8 +56,8 @@ public class Server {
                 // Send message to Client
                 outputStream.writeObject(pktLog.newOut(
                         new Packet(1,
+                                "Server",
                                 lastIn.getSenderID(),
-                                lastIn.getDestID(),
                                 resp,
                                 null,
                                 null,
@@ -75,8 +75,8 @@ public class Server {
                 // Send message to Client
                 outputStream.writeObject(pktLog.newOut(     // Forwards message
                         new Packet(3,
+                                "Server",
                                 lastIn.getSenderID(),
-                                lastIn.getDestID(),
                                 resp,
                                 null,
                                 null,
@@ -91,8 +91,8 @@ public class Server {
                 // Send message to Client
                 outputStream.writeObject(pktLog.newOut(     // Forwards message
                         new Packet(4,
+                                "Server",
                                 lastIn.getSenderID(),
-                                lastIn.getDestID(),
                                 resp,
                                 null,
                                 null,

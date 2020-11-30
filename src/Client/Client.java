@@ -17,6 +17,8 @@ public class Client {
     private ObjectInputStream objectInputStream;
     private ObjectOutputStream objectOutputStream;
 
+    private Socket s;
+
     // Client Information
     // general
     private String duration;
@@ -36,8 +38,9 @@ public class Client {
     // actions
     private JSONArray actions;
 
-    public Client(String file) {
+    public Client(String file){
         pktLog = new PacketLogger();
+        s = null;
 
         JSONParser parser = new JSONParser();
         try {
@@ -66,7 +69,7 @@ public class Client {
 
             this.actions = (JSONArray) jsonObject.get("actions");
 
-            Socket s = null;
+
             while(s ==null) {
                 // REGISTRATION
                 try {
@@ -79,14 +82,24 @@ public class Client {
             objectInputStream = new ObjectInputStream(s.getInputStream());
             objectOutputStream = new ObjectOutputStream(s.getOutputStream());
 
-            objectOutputStream.writeObject(pktLog.newOut(
-                    new Packet(1,
-                            id,
-                            null,
-                            null,
-                            name,
-                            name,
-                            publicKey)));
+            boolean sent = false;
+            while(!sent) {
+                objectOutputStream.writeObject(pktLog.newOut(
+                        new Packet(1,
+                                id,
+                                null,
+                                null,
+                                name,
+                                name,
+                                publicKey)));
+                System.out.println(pktLog.newIn(objectInputStream.readObject()));
+                Packet p = (Packet) objectInputStream.readObject();
+                if (p != null)
+                    if (p.getData().equals("Successful registration"))
+                        sent = true;
+                    else
+                        Thread.sleep(Integer.parseInt(timeout)*1000);
+            }
 
             // Read message from Server
             pktLog.newIn(objectInputStream.readObject());
@@ -99,7 +112,7 @@ public class Client {
 
     }
 
-    public void startClient() throws IOException, ClassNotFoundException {
+    public void startClient() throws IOException, ClassNotFoundException, InterruptedException {
         long startingTime = System.currentTimeMillis();
 
 
@@ -126,29 +139,56 @@ public class Client {
 
             if (actionType.equals("SEND")) {
                 if (!toId.contains(",")) {
-                    objectOutputStream.writeObject(pktLog.newOut(
-                            new Packet(3,
-                                    id,
-                                    toId,
-                                    m,
-                                    name,
-                                    name,
-                                    null)));
+                    int tries = 0;
+                    boolean sent = false;
+                    while(tries < Integer.parseInt(retries) && !sent){
+                        objectOutputStream.writeObject(pktLog.newOut(
+                                new Packet(3,
+                                        id,
+                                        toId,
+                                        m,
+                                        name,
+                                        name,
+                                        null)));
+                        System.out.println(pktLog.newIn(objectInputStream.readObject()));
+                        Packet p = (Packet)objectInputStream.readObject();
+                        if(p!=null) {
+                            if (p.getData().equals("Success message sent"))
+                                sent = true;
+                            else {
+                                tries = +1;
+                                Thread.sleep(Integer.parseInt(timeout)*1000);
+                            }
+                        }
+                    }
                 } else {
 
                     String[] name = toId.split(",", 2);
                     String firstName = name[0].replace(" ", "");
                     String lastName = name[1].replace(" ", "");
 
-                    objectOutputStream.writeObject(pktLog.newOut(
-                            new Packet(4,
-                                    id,
-                                    ip,
-                                    m,
-                                    firstName,
-                                    lastName,
-                                    null)));
-                    System.out.println(pktLog.newIn(objectInputStream.readObject()));
+                    int tries = 0;
+                    boolean sent = false;
+                    while(tries < Integer.parseInt(retries) && !sent){
+                        objectOutputStream.writeObject(pktLog.newOut(
+                                new Packet(4,
+                                        id,
+                                        ip,
+                                        m,
+                                        firstName,
+                                        lastName,
+                                        null)));
+                        System.out.println(pktLog.newIn(objectInputStream.readObject()));
+                        Packet p = (Packet)objectInputStream.readObject();
+                        if(p!=null) {
+                            if (p.getData().equals("Success message sent"))
+                                sent = true;
+                            else {
+                                tries = +1;
+                                Thread.sleep(Integer.parseInt(timeout) * 1000);
+                            }
+                        }
+                    }
                 }
             }
 

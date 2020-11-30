@@ -12,7 +12,7 @@ public class App {
         try {
             c.startClient();
             c2.startClient();
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (IOException | ClassNotFoundException | InterruptedException e) {
             e.printStackTrace();
         }
             
