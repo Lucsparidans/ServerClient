@@ -38,9 +38,10 @@ public class Client {
     // actions
     private JSONArray actions;
 
-    public Client(String file){
+    public Client(String file) {
         pktLog = new PacketLogger();
         s = null;
+
 
         JSONParser parser = new JSONParser();
         try {
@@ -74,8 +75,8 @@ public class Client {
                 // REGISTRATION
                 try {
                     s = new Socket("localhost", 4999);
-                    System.out.println("Timeout on connection request"); //Server was not open yet probably
                 } catch (ConnectException e) {
+                    System.out.println("Timeout on connection request"); //Server was not open yet probably
                     Thread.sleep(100);
                 }
             }
@@ -122,7 +123,7 @@ public class Client {
 //            closed which will cause memory leaks!
 
             // Read message from Server
-            pktLog.newIn(objectInputStream.readObject());
+            //pktLog.newIn(objectInputStream.readObject());
 
             String a = action.toString();
             String[] parts = a.split("\\[", 3);
