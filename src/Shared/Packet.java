@@ -4,18 +4,39 @@ import java.io.Serializable;
 
 public class Packet implements Serializable {
 
+    public enum PacketType {
+        SYN,
+        ACK,
+        SYN_ACK,
+        MSG_REQUEST,
+        MSG,
+        RECEIVED_CONFIRM,
+        NO_MSGs,
+        UNKNOWN_USER_ERROR,
+        ERROR
+    }
+    public enum DataFormat{
+        STRING,
+        MESSAGE,
+        ARRAYLIST_MESSAGES
+    }
+
     // region Variables
     private static final long serialVersionUID = 1L;
     private PacketType type;
+    private DataFormat dataFormat;
     private String senderID;
     private String destID;
-    private String data;
+    private Object data;
     private String firstName;
     private String lastName;
     private String publicKey;
 
-    public Packet(PacketType type, String senderID, String destID, String data, String firstName, String lastName, String publicKey) {
+    // endregion
+
+    public Packet(PacketType type, String senderID, String destID, Object data, DataFormat dataFormat,String firstName, String lastName, String publicKey) {
         this.type = type;
+        this.dataFormat = dataFormat;
         this.senderID = senderID;
         this.destID = destID;
         this.data = data;
@@ -23,7 +44,6 @@ public class Packet implements Serializable {
         this.lastName = lastName;
         this.publicKey = publicKey;
     }
-    // endregion
 
     @Override
     public String toString() {
@@ -31,8 +51,8 @@ public class Packet implements Serializable {
                 "Packet[Type:%s\nSenderID: %s\nDestinationID: %s\nData: %s\nFirstName: %s\nLastName: %s\nPublicKey: %s]\n",
                 type, senderID, destID, data, firstName, lastName, publicKey);
     }
-
     // region Getters/Setters
+
     public PacketType getType() {
         return type;
     }
@@ -65,8 +85,12 @@ public class Packet implements Serializable {
         this.destID = destID;
     }
 
-    public String getData() {
+    public Object getData() {
         return data;
+    }
+
+    public DataFormat getDataFormat(){
+        return dataFormat;
     }
 
     public void setData(String data) {
@@ -95,18 +119,6 @@ public class Packet implements Serializable {
 
     public void setPublicKey(String publicKey) {
         this.publicKey = publicKey;
-    }
-
-    public enum PacketType {
-        SYN,
-        ACK,
-        SYN_ACK,
-        MSG_REQUEST,
-        MSG,
-        RECEIVED_CONFIRM,
-        NO_MSGs,
-        UNKNOWN_USER_ERROR,
-        ERROR
     }
 
     // endregion

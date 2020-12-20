@@ -29,6 +29,7 @@ public class TestServer {
                             "localhost",
                             "localhost",
                             "Package successfully received!",
+                            Packet.DataFormat.STRING,
                             "Luc",
                             "Sparidans",
                             "Key"

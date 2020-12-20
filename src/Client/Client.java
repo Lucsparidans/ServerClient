@@ -1,6 +1,7 @@
 package Client;
 
 import Shared.Packet;
+import Shared.Packet.DataFormat;
 import Shared.Packet.PacketType;
 import Shared.PacketLogger;
 import org.json.simple.JSONArray;
@@ -63,6 +64,7 @@ public class Client {
                                 id,
                                 null,
                                 null,
+                                null,
                                 name,
                                 name,
                                 publicKey)));
@@ -74,6 +76,7 @@ public class Client {
                                 new Packet(
                                         PacketType.SYN_ACK,
                                         id,
+                                        null,
                                         null,
                                         null,
                                         name,
@@ -182,6 +185,7 @@ public class Client {
                                         id,
                                         toId,
                                         m,
+                                        DataFormat.STRING,
                                         null,
                                         null,
                                         null)));
@@ -208,6 +212,7 @@ public class Client {
                                         id,
                                         null,
                                         m,
+                                        DataFormat.STRING,
                                         firstName,
                                         lastName,
                                         null)));
@@ -237,6 +242,7 @@ public class Client {
             objectOutputStream.writeObject(pktLog.newOut(
                     new Packet(PacketType.MSG_REQUEST,
                             id,
+                            null,
                             null,
                             null,
                             null,

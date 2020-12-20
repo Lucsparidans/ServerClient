@@ -1,6 +1,7 @@
 package Server;
 
 import Shared.Packet;
+import Shared.Packet.DataFormat;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -108,10 +109,29 @@ public class Server {
         if (pkt.getDestID() != null) {
             if (ID_LIST.contains(pkt.getDestID())) {
                 // ID is registered
-                MSG_BY_ID.get(pkt.getDestID()).add(new Message(
-                        pkt.getSenderID(),
-                        pkt.getDestID(),
-                        pkt.getData()));
+                DataFormat dataFormat = pkt.getDataFormat();
+                switch (dataFormat){
+                    case STRING:
+                        MSG_BY_ID.get(pkt.getDestID()).add(new Message(
+                                pkt.getSenderID(),
+                                pkt.getDestID(),
+                                (String)pkt.getData()));
+                        break;
+                    case MESSAGE:
+                        MSG_BY_ID.get(pkt.getDestID()).add(new Message(
+                                pkt.getSenderID(),
+                                pkt.getDestID(),
+                                ((Message) pkt.getData()).getMessage()));
+                        break;
+                    case ARRAYLIST_MESSAGES:
+                        ArrayList<?> messages = (ArrayList<?>) pkt.getData();
+                        for (Object message : messages) {
+                            MSG_BY_ID.get(pkt.getDestID()).add(new Message(
+                                    pkt.getSenderID(),
+                                    pkt.getDestID(),
+                                    ((Message) message).getMessage()));
+                        }
+                }
                 // Message successfully sent
                 return true;
             } else {
@@ -124,11 +144,30 @@ public class Server {
             String ID = NAME_TO_ID.get(fullName);
             if (ID != null) {
                 // ID was found in the database
-                MSG_BY_ID.get(ID).add(new Message(
-                        pkt.getSenderID(),
-                        pkt.getDestID(),
-                        pkt.getData()));
-                // Message successfully sent
+                DataFormat dataFormat = pkt.getDataFormat();
+                switch (dataFormat) {
+                    case STRING:
+                        MSG_BY_ID.get(ID).add(new Message(
+                                pkt.getSenderID(),
+                                ID,
+                                (String) pkt.getData()));
+                        break;
+                    case MESSAGE:
+                        MSG_BY_ID.get(ID).add(new Message(
+                                pkt.getSenderID(),
+                                ID,
+                                ((Message) pkt.getData()).getMessage()));
+                        break;
+                    case ARRAYLIST_MESSAGES:
+                        ArrayList<?> messages = (ArrayList<?>) pkt.getData();
+                        for (Object message : messages) {
+                            MSG_BY_ID.get(ID).add(new Message(
+                                    pkt.getSenderID(),
+                                    ID,
+                                    ((Message) message).getMessage()));
+                        }
+                }
+                // Message(s) successfully sent
                 return true;
             } else {
                 // ID was not found in the database

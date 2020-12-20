@@ -20,6 +20,7 @@ public class TestClient {
                     "localhost",
                     "localhost",
                     "Hello from client",
+                    Packet.DataFormat.STRING,
                     "Luc",
                     "Sparidans",
                     "Key"));
