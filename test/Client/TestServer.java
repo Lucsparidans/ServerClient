@@ -1,6 +1,7 @@
 package Client;
 
 import Shared.Packet;
+import Shared.Packet.PacketType;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -24,14 +25,14 @@ public class TestServer {
                 Packet p = (Packet)OIS.readObject();
                 if(p!=null) {
                     System.out.println(p.getData());
-                    OOS.writeObject(new Packet(1,
+                    OOS.writeObject(new Packet(PacketType.ACK,
                             "localhost",
                             "localhost",
                             "Package successfully received!",
                             "Luc",
                             "Sparidans",
                             "Key"
-                            ));
+                    ));
 
                     running = false;
                     sock.close();
@@ -42,9 +43,7 @@ public class TestServer {
             }
 
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
     }

@@ -8,16 +8,15 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 
 public class TestClient {
-    private static boolean running;
     public static void main(String[] args) {
         try {
             System.out.println("Launching client");
-            Socket sock = new Socket("localhost",4999);
-            running = true;
+            Socket sock = new Socket("localhost", 4999);
+            boolean running = true;
             ObjectOutputStream OOS = new ObjectOutputStream(sock.getOutputStream());
             ObjectInputStream OIS = new ObjectInputStream(sock.getInputStream());
 
-            OOS.writeObject(new Packet(0,
+            OOS.writeObject(new Packet(Packet.PacketType.SYN,
                     "localhost",
                     "localhost",
                     "Hello from client",
@@ -26,7 +25,7 @@ public class TestClient {
                     "Key"));
             while(running){
                 Packet p = (Packet)OIS.readObject();
-                if(p!=null){
+                if (p != null) {
                     System.out.println(p.getData());
 
                     running = false;
@@ -36,9 +35,7 @@ public class TestClient {
                 }
             }
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
 

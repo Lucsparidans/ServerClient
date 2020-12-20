@@ -1,10 +1,12 @@
 package Client;
 
 import Shared.Packet;
+import Shared.Packet.PacketType;
 import Shared.PacketLogger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 import java.io.*;
 import java.net.ConnectException;
@@ -42,88 +44,121 @@ public class Client {
         pktLog = new PacketLogger();
         s = null;
 
-
-        JSONParser parser = new JSONParser();
+        // Parse the JSON file and connect to the server
         try {
-            Object obj = parser.parse(new FileReader(file));
+            parseJSON(file);
+            s = connectToServer("localhost", 4999);
+        } catch (IOException | ParseException | InterruptedException e) {
+            e.printStackTrace();
+        }
 
-            // A JSON object. Key value pairs are unordered. JSONObject supports java.util.Map interface.
-            JSONObject jsonObject = (JSONObject) obj;
-
-            // A JSON array. JSONObject supports java.util.List interface.
-            JSONObject general = (JSONObject) jsonObject.get("general");
-            this.duration = (String) general.get("duration");
-            this.retries = (String) general.get("retries");
-            this.timeout = (String) general.get("timeout");
-
-            JSONObject person = (JSONObject) jsonObject.get("person");
-            this.id = (String) person.get("id");
-            this.name = (String) person.get("name");
-
-            JSONObject keys = (JSONObject) person.get("keys");
-            this.privateKey = (String) keys.get("private");
-            this.publicKey = (String) keys.get("public");
-
-            JSONObject server = (JSONObject) jsonObject.get("server");
-            this.ip = (String) server.get("ip");
-            this.port = (String) server.get("port");
-
-            this.actions = (JSONArray) jsonObject.get("actions");
-
-
-            while(s ==null) {
-                // REGISTRATION
-                try {
-                    s = new Socket("localhost", 4999);
-                } catch (ConnectException e) {
-                    System.out.println("Timeout on connection request"); //Server was not open yet probably
-                    Thread.sleep(100);
-                }
-            }
+        try {
             objectInputStream = new ObjectInputStream(s.getInputStream());
             objectOutputStream = new ObjectOutputStream(s.getOutputStream());
 
-            boolean sent = false;
-            while(!sent) {
+            boolean verified = false;
+            while (!verified) {
                 objectOutputStream.writeObject(pktLog.newOut(
-                        new Packet(1,
+                        new Packet(PacketType.SYN,
                                 id,
                                 null,
                                 null,
                                 name,
                                 name,
                                 publicKey)));
-                System.out.println(pktLog.newIn(objectInputStream.readObject()));
                 Packet p = (Packet) objectInputStream.readObject();
-                if (p != null)
-                    if (p.getData().equals("Successful registration"))
-                        sent = true;
-                    else
-                        Thread.sleep(Integer.parseInt(timeout)*1000);
+                if (p != null) {
+                    if (p.getType() == PacketType.ACK) {
+                        verified = true;
+                        objectOutputStream.writeObject(pktLog.newOut(
+                                new Packet(
+                                        PacketType.SYN_ACK,
+                                        id,
+                                        null,
+                                        null,
+                                        name,
+                                        name,
+                                        publicKey
+                                )));
+                    }
+                } else
+                    Thread.sleep(Integer.parseInt(timeout) * 1000L);
             }
 
             // Read message from Server
-            pktLog.newIn(objectInputStream.readObject());
-            System.out.println(pktLog.getLastIn().getData());
-
-        } catch (Exception e) {
+            // TODO: Find out what this is doing???
+//            pktLog.newIn(objectInputStream.readObject());
+//            System.out.println(pktLog.getLastIn().getData());
+        } catch (IOException | InterruptedException | ClassNotFoundException e) {
             e.printStackTrace();
         }
+    }
 
+    /**
+     * Method that connects the client to a server at the specified address and port
+     *
+     * @param hostAddr address of the server
+     * @param port     Server port
+     * @return new socket that is connected to the server
+     * @throws InterruptedException Interruption on the Thread.sleep
+     */
+    private Socket connectToServer(String hostAddr, int port) throws InterruptedException {
+        Socket sock = null;
+        while (sock == null) {
+            // REGISTRATION
+            try {
+                sock = new Socket(hostAddr, port);
+            } catch (ConnectException e) {
+                System.out.println("Timeout on connection request"); //Server was not open yet probably
+                Thread.sleep(100);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return sock;
+    }
 
+    /**
+     * Method that parses the JSON file and saves the included information
+     *
+     * @param file Path to the JSON file
+     * @throws FileNotFoundException File was not found
+     * @throws IOException           IO went wrong
+     * @throws ParseException        Could not parse the JSON file
+     */
+    private void parseJSON(String file) throws FileNotFoundException, IOException, ParseException {
+        JSONParser parser = new JSONParser();
+        Object obj = parser.parse(new FileReader(file));
+
+        // A JSON object. Key value pairs are unordered. JSONObject supports java.util.Map interface.
+        JSONObject jsonObject = (JSONObject) obj;
+
+        // A JSON array. JSONObject supports java.util.List interface.
+        JSONObject general = (JSONObject) jsonObject.get("general");
+        this.duration = (String) general.get("duration");
+        this.retries = (String) general.get("retries");
+        this.timeout = (String) general.get("timeout");
+
+        JSONObject person = (JSONObject) jsonObject.get("person");
+        this.id = (String) person.get("id");
+        this.name = (String) person.get("name");
+
+        JSONObject keys = (JSONObject) person.get("keys");
+        this.privateKey = (String) keys.get("private");
+        this.publicKey = (String) keys.get("public");
+
+        JSONObject server = (JSONObject) jsonObject.get("server");
+        this.ip = (String) server.get("ip");
+        this.port = (String) server.get("port");
+
+        this.actions = (JSONArray) jsonObject.get("actions");
     }
 
     public void startClient() throws IOException, ClassNotFoundException, InterruptedException {
         long startingTime = System.currentTimeMillis();
 
-
         // EXECUTE ACTIONS
         for (Object action : this.actions) {
-//            s = new Socket("localhost", 4999); This is bad since there is already an open socket which has not yet been
-//            closed which will cause memory leaks!
-
-            // Read message from Server
-            //pktLog.newIn(objectInputStream.readObject());
 
             String a = action.toString();
             String[] parts = a.split("\\[", 3);
@@ -137,33 +172,30 @@ public class Client {
             String m = parts[2];
             m = m.replace("]", "");
 
-
             if (actionType.equals("SEND")) {
                 if (!toId.contains(",")) {
                     int tries = 0;
                     boolean sent = false;
                     while(tries < Integer.parseInt(retries) && !sent){
                         objectOutputStream.writeObject(pktLog.newOut(
-                                new Packet(3,
+                                new Packet(PacketType.MSG, // TODO: With ID
                                         id,
                                         toId,
                                         m,
-                                        name,
-                                        name,
+                                        null,
+                                        null,
                                         null)));
-                        System.out.println(pktLog.newIn(objectInputStream.readObject()));
                         Packet p = (Packet)objectInputStream.readObject();
                         if(p!=null) {
                             if (p.getData().equals("Success message sent"))
                                 sent = true;
                             else {
                                 tries = +1;
-                                Thread.sleep(Integer.parseInt(timeout)*1000);
+                                Thread.sleep(Integer.parseInt(timeout)*1000L);
                             }
                         }
                     }
                 } else {
-
                     String[] name = toId.split(",", 2);
                     String firstName = name[0].replace(" ", "");
                     String lastName = name[1].replace(" ", "");
@@ -172,27 +204,25 @@ public class Client {
                     boolean sent = false;
                     while(tries < Integer.parseInt(retries) && !sent){
                         objectOutputStream.writeObject(pktLog.newOut(
-                                new Packet(4,
+                                new Packet(PacketType.MSG, // TODO: With name
                                         id,
-                                        ip,
+                                        null,
                                         m,
                                         firstName,
                                         lastName,
                                         null)));
-                        System.out.println(pktLog.newIn(objectInputStream.readObject()));
                         Packet p = (Packet)objectInputStream.readObject();
                         if(p!=null) {
                             if (p.getData().equals("Success message sent"))
                                 sent = true;
                             else {
                                 tries = +1;
-                                Thread.sleep(Integer.parseInt(timeout) * 1000);
+                                Thread.sleep(Integer.parseInt(timeout) * 1000L);
                             }
                         }
                     }
                 }
             }
-
         }
 
         // CHECK FOR MESSAGES
@@ -201,15 +231,11 @@ public class Client {
         // Constantly checking for new messages
         while (System.currentTimeMillis() < startingTime + milliSeconds) {
 
-
-//            s = new Socket("localhost", 4999); Same story here, risk of memory leaks!
-
-            // Read message from Server
             pktLog.newIn(objectInputStream.readObject());
 
             // Send get messages request to server
             objectOutputStream.writeObject(pktLog.newOut(
-                    new Packet(2,
+                    new Packet(PacketType.MSG_REQUEST,
                             id,
                             null,
                             null,
@@ -218,21 +244,19 @@ public class Client {
                             null)));
             try {
                 pktLog.newIn(objectInputStream.readObject());
-                int messagesNumber = pktLog.getLastIn().getType();
+                PacketType messagesNumber = pktLog.getLastIn().getType();
 
-                if (messagesNumber != 500) {
-                    for (int j = 0; j < messagesNumber; j++) {
-                        String message = pktLog.getLastIn().getData();
-                        System.out.println("Message " + j + " : " + message);
-                    }
+                if (messagesNumber != PacketType.ERROR) {
+                    // TODO: Fix this code?!
+//                    for (int j = 0; j < messagesNumber; j++) {
+//                        String message = pktLog.getLastIn().getData();
+//                        System.out.println("Message " + j + " : " + message);
+//                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-
         System.out.println("duration over");
     }
-    
-
 }

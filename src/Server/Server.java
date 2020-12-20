@@ -1,9 +1,8 @@
 package Server;
 
 import Shared.Packet;
-import Shared.PacketLogger;
 
-import java.io.*;
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -11,207 +10,137 @@ import java.util.HashMap;
 
 public class Server {
 
-    private static final ArrayList<ClientInfo> db = new ArrayList<>();
-    private static final ArrayList<Message> messages = new ArrayList<>();
-    private static final ArrayList<PacketLogger> pktLoggers = new ArrayList<>();
-    private static final HashMap<Socket,PacketLogger> sockLoggers = new HashMap<>();
+    private static final ArrayList<ClientHandler> SESSIONS = new ArrayList<>();
+    private static final HashMap<String, ArrayList<Message>> MSG_BY_ID = new HashMap<>();
+    private static final HashMap<String, ClientInfo> INFO_BY_ID = new HashMap<>();
+    private static final HashMap<String, String> NAME_TO_ID = new HashMap<>();
+    private static final ArrayList<String> ID_LIST = new ArrayList<>();
 
     public static void main(String[] args) throws IOException, ClassNotFoundException {
         ServerSocket ss = new ServerSocket(4999);
-
-        ObjectInputStream inputStream;
-        ObjectOutputStream outputStream;
-        // Test
-        Message m1 = new Message("abc", "abc", "Hey!");
-        messages.add(m1);
-        Message m2 = new Message("abc", "abc", "How are you bro?");
-        messages.add(m2);
-        Message m3 = new Message("abc", "abc", "What are you doing?");
-        messages.add(m3);
-
-        while (true) {
-            //TODO: Add exit condition
-            System.out.println("Waiting for a client..");
-            // Accept Client
+        while (!ss.isClosed()) {
+            // TODO: Accept all incoming connections while there is capacity for them
+            // TODO: Handle all accepted connection on a worker thread (Master-worker architecture)
+            // TODO: Handle all generated threads
+            // TODO: Collect all threads in some data structure
+            // TODO: create method to shutdown (all) threads
+            // TODO: Add synchronisation to prevent concurrent access exceptions
             Socket s = ss.accept();
-            PacketLogger pktLog = new PacketLogger();
-            pktLoggers.add(pktLog);
-            sockLoggers.put(s,pktLog);
-            System.out.println("Client Connected");
+            ClientHandler clientHandler = new ClientHandler(s);
+            clientHandler.register();
+            Thread thread = new Thread(clientHandler);
+            thread.start();
+        }
+    }
 
-            outputStream = new ObjectOutputStream(s.getOutputStream());
-            inputStream = new ObjectInputStream(s.getInputStream());
+    /**
+     * Method that takes care of adding a new user to the database (and confirms authenticity?)
+     *
+     * @param packetIn Packet including the SYN request
+     * @return A string with feedback TODO: Change this
+     */
+    public synchronized static boolean register(Packet packetIn) {
+        if (ID_LIST.contains(packetIn.getSenderID())) {
+            // User is already registered
+            return false;
+        } else {
+            // Add user to the database structures (multiple formats for higher performance on specific queries)
+            INFO_BY_ID.put(packetIn.getSenderID(), new ClientInfo(
+                    packetIn.getSenderID(),
+                    packetIn.getFirstName(),
+                    packetIn.getLastName(),
+                    packetIn.getPublicKey()));
+            NAME_TO_ID.put(packetIn.getFullName(), packetIn.getSenderID());
+            ID_LIST.add(packetIn.getSenderID());
+            return true;
+        }
+    }
 
-            // Read message from client
-            pktLog.newIn(inputStream.readObject());
+    public static synchronized ArrayList<Message> checkMessages(String id) throws IOException, ClassNotFoundException {
+        return MSG_BY_ID.get(id);
+        // region OLD CODE
+//        // CHECK FOR MESSAGES
+//        String clientId = in.getSenderID();
+//        ArrayList<String> myMessages = getMyMessages(clientId);
+//        int messagesNumber = myMessages.size();
+//
+//        if (messagesNumber > 0) {
+//            // Send messages number to Client
+//            OOS.writeObject(pktLog.newOut(     // Sends the number of messages it will send
+//                    new Packet(in.getType(),
+//                            in.getSenderID(),
+//                            in.getDestID(),
+//                            Integer.toString(messagesNumber),
+//                            null,
+//                            null,
+//                            null)
+//            ));
+//            for (String mes : myMessages) {
+//                // Send messages to client
+//                OOS.writeObject(pktLog.newOut(     // Sends the number of messages it will send
+//                        new Packet(in.getType(),
+//                                in.getSenderID(),
+//                                in.getDestID(),
+//                                mes,
+//                                null,
+//                                null,
+//                                null)
+//                ));
+//                System.out.println(mes);
+//            }
+//        } else {
+//            // Send to Client that are no messages
+//            OOS.writeObject(pktLog.newOut(     // Sends the number of messages it will send
+//                    new Packet(PacketType.NO_MSGs,
+//                            in.getSenderID(),
+//                            in.getDestID(),
+//                            "No available messages",
+//                            null,
+//                            null,
+//                            null)
+//            ));
+//        }
+        // endregion
+    }
 
-            Packet lastIn = pktLog.getLastIn();
-
-            System.out.printf("Request of type : %d\n", lastIn.getType());
-
-            if (pktLog.getLastIn().getType() == (1)) {
-                // REGISTRATION
-                String resp = registration(pktLog.getLastIn());
-
-                // Send message to Client
-                outputStream.writeObject(pktLog.newOut(
-                        new Packet(1,
-                                "Server",
-                                lastIn.getSenderID(),
-                                resp,
-                                null,
-                                null,
-                                null)
-                ));
-            } else if (pktLog.getLastIn().getType() == (2)) {
-                // CHECK FOR MESSAGES
-
-                checkMessages(pktLog,inputStream,outputStream);
-
-            } else if (lastIn.getType() == 3) {
-                // SEND MESSAGE WITH ID
-                String resp = sendMessage(lastIn, false);
-
-                // Send message to Client
-                outputStream.writeObject(pktLog.newOut(     // Forwards message
-                        new Packet(3,
-                                "Server",
-                                lastIn.getSenderID(),
-                                resp,
-                                null,
-                                null,
-                                null)
-                ));
-
-            } else if (lastIn.getType() == 4) {
-                // SEND MESSAGE WITH NAME
-                String resp = sendMessage(lastIn, true);
-
-                System.out.println(resp);
-                // Send message to Client
-                outputStream.writeObject(pktLog.newOut(     // Forwards message
-                        new Packet(4,
-                                "Server",
-                                lastIn.getSenderID(),
-                                resp,
-                                null,
-                                null,
-                                null)
-                ));
+    public synchronized static boolean sendMessage(Packet pkt) {
+        // TODO: Check whether the sender is registered??
+        if (pkt.getDestID() != null) {
+            if (ID_LIST.contains(pkt.getDestID())) {
+                // ID is registered
+                MSG_BY_ID.get(pkt.getDestID()).add(new Message(
+                        pkt.getSenderID(),
+                        pkt.getDestID(),
+                        pkt.getData()));
+                // Message successfully sent
+                return true;
             } else {
-                // Send message to Client
-                outputStream.writeObject(pktLog.newOut(
-                        new Packet(-1,
-                                lastIn.getSenderID(),
-                                lastIn.getDestID(),
-                                "ERROR: Something went wrong",
-                                null,
-                                null,
-                                null)
-                ));
+                // ID is not registered
+                // Cannot send message
+                return false;
             }
-        }
-    }
-
-    public static String registration(Packet packetIn) {
-
-        for (ClientInfo c: db) {
-            if (c.getId().equals(packetIn.getSenderID())) return "Client has been already registered";
-        }
-
-        ClientInfo c = new ClientInfo(packetIn.getSenderID(), packetIn.getFirstName(), packetIn.getLastName(), packetIn.getPublicKey());
-        db.add(c);
-
-        return "Successful registration";
-    }
-
-    public static void checkMessages(PacketLogger pktLog, ObjectInputStream OIS, ObjectOutputStream OOS) throws IOException, ClassNotFoundException {
-        // CHECK FOR MESSAGES
-        Packet in = pktLog.newIn(OIS.readObject());
-        String clientId = in.getSenderID();
-        ArrayList<String> myMessages = getMyMessages(clientId);
-        int messagesNumber = myMessages.size();
-
-        if (messagesNumber > 0) {
-            // Send messages number to Client
-            OOS.writeObject(pktLog.newOut(     // Sends the number of messages it will send
-                    new Packet(in.getType(),
-                            in.getSenderID(),
-                            in.getDestID(),
-                            Integer.toString(messagesNumber),
-                            null,
-                            null,
-                            null)
-            ));
-            for (String mes : myMessages) {
-                // Send messages to client
-                OOS.writeObject(pktLog.newOut(     // Sends the number of messages it will send
-                        new Packet(in.getType(),
-                                in.getSenderID(),
-                                in.getDestID(),
-                                mes,
-                                null,
-                                null,
-                                null)
-                ));
-                System.out.println(mes);
+        } else if (pkt.hasName()) {
+            String fullName = pkt.getFullName();
+            String ID = NAME_TO_ID.get(fullName);
+            if (ID != null) {
+                // ID was found in the database
+                MSG_BY_ID.get(ID).add(new Message(
+                        pkt.getSenderID(),
+                        pkt.getDestID(),
+                        pkt.getData()));
+                // Message successfully sent
+                return true;
+            } else {
+                // ID was not found in the database
+                // Cannot send the message
+                return false;
             }
         } else {
-            // Send to Client that are no messages
-            OOS.writeObject(pktLog.newOut(     // Sends the number of messages it will send
-                    new Packet(500,
-                            in.getSenderID(),
-                            in.getDestID(),
-                            "No available messages",
-                            null,
-                            null,
-                            null)
-            ));
+            // Something went wrong!
+            // TODO: Handle this without throwing an exception
+            throw new IllegalStateException("Sending packet without destination!");
         }
     }
-
-    public static String sendMessage(Packet pkt, boolean nameId) {
-
-        if (nameId) {
-            String toId = getIdByName(pkt.getFirstName(), pkt.getLastName());
-            if (!toId.equals("-1")) {
-                messages.add(new Message(pkt.getSenderID(), toId, pkt.getData()));
-                return "Success message sent";
-            }
-            return "User not found";
-        }
-        messages.add(new Message(pkt.getSenderID(), pkt.getDestID(), pkt.getData()));
-        return "Success message sent";
-    }
-
-    public static ArrayList<String> getMyMessages(String id) {
-        ArrayList<String> myMessages = new ArrayList<>();
-
-        for (Message mes : messages) {
-            if (mes.getToId().equals(id)) {
-                myMessages.add(mes.getMessage());
-            }
-        }
-        return myMessages;
-    }
-
-    public static String getKeyById(String id) {
-        for (ClientInfo c : db) {
-            if (c.getId().equals(id)) {
-                return c.getPublicKey();
-            }
-        }
-        return "Error";
-    }
-
-    public  static String getIdByName(String firstName, String lastName) {
-        for (ClientInfo c: db) {
-            if (c.getFirstName().equals(firstName) && c.getLastName().equals(lastName)) return c.getId();
-        }
-        return "-1";
-    }
-
-
 }
 
 

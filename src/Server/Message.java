@@ -1,24 +1,27 @@
 package Server;
 
 public class Message {
-    private String fromId;
-    private String toId;
+    private String sender;
+    private String receiver;
     private String message;
 
-    public String getFromId() {
-        return fromId;
+
+    public Message(String sender, String receiver, String message) {
+        this.sender = sender;
+        this.receiver = receiver;
+        this.message = message;
     }
 
-    public void setFromId(String fromId) {
-        this.fromId = fromId;
+    public String getSender() {
+        return sender;
     }
 
-    public String getToId() {
-        return toId;
+    public void setSender(String sender) {
+        this.sender = sender;
     }
 
-    public void setToId(String toId) {
-        this.toId = toId;
+    public String getReceiver() {
+        return receiver;
     }
 
     public String getMessage() {
@@ -29,9 +32,7 @@ public class Message {
         this.message = message;
     }
 
-    public Message(String fromId, String toId, String message) {
-        this.fromId = fromId;
-        this.toId = toId;
-        this.message = message;
+    public void setReceiver(String receiver) {
+        this.receiver = receiver;
     }
 }

@@ -3,8 +3,10 @@ package Shared;
 import java.io.Serializable;
 
 public class Packet implements Serializable {
-    private static final long serialVersionUID  = 1L;
-    private int type;
+
+    // region Variables
+    private static final long serialVersionUID = 1L;
+    private PacketType type;
     private String senderID;
     private String destID;
     private String data;
@@ -12,7 +14,7 @@ public class Packet implements Serializable {
     private String lastName;
     private String publicKey;
 
-    public Packet(int type, String senderID, String destID, String data, String firstName, String lastName, String publicKey) {
+    public Packet(PacketType type, String senderID, String destID, String data, String firstName, String lastName, String publicKey) {
         this.type = type;
         this.senderID = senderID;
         this.destID = destID;
@@ -21,20 +23,30 @@ public class Packet implements Serializable {
         this.lastName = lastName;
         this.publicKey = publicKey;
     }
+    // endregion
 
     @Override
     public String toString() {
         return String.format(
-                "Packet[Type:%d\nSenderID: %s\nDestinationID: %s\nData: %s\nFirstName: %s\nLastName: %s\nPublicKey: %s]\n",
-                type,senderID,destID,data,firstName,lastName,publicKey);
+                "Packet[Type:%s\nSenderID: %s\nDestinationID: %s\nData: %s\nFirstName: %s\nLastName: %s\nPublicKey: %s]\n",
+                type, senderID, destID, data, firstName, lastName, publicKey);
     }
 
-    public int getType() {
+    // region Getters/Setters
+    public PacketType getType() {
         return type;
     }
 
-    public void setType(int type) {
+    public void setType(PacketType type) {
         this.type = type;
+    }
+
+    public boolean hasName() {
+        return this.firstName != null && this.getLastName() != null;
+    }
+
+    public String getFullName() {
+        return this.firstName.concat(" ".concat(this.lastName));
     }
 
     public String getSenderID() {
@@ -84,4 +96,18 @@ public class Packet implements Serializable {
     public void setPublicKey(String publicKey) {
         this.publicKey = publicKey;
     }
+
+    public enum PacketType {
+        SYN,
+        ACK,
+        SYN_ACK,
+        MSG_REQUEST,
+        MSG,
+        RECEIVED_CONFIRM,
+        NO_MSGs,
+        UNKNOWN_USER_ERROR,
+        ERROR
+    }
+
+    // endregion
 }
