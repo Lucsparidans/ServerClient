@@ -12,6 +12,7 @@ import org.json.simple.parser.ParseException;
 import java.io.*;
 import java.net.ConnectException;
 import java.net.Socket;
+import java.util.PriorityQueue;
 
 public class Client {
 
@@ -39,12 +40,12 @@ public class Client {
     private String port;
 
     // actions
-    private JSONArray actions;
+    private final PriorityQueue<Action> actions;
 
     public Client(String file) {
         pktLog = new PacketLogger();
         s = null;
-
+        actions = new PriorityQueue<Action>();
         // Parse the JSON file and connect to the server
         try {
             parseJSON(file);
@@ -88,10 +89,6 @@ public class Client {
                     Thread.sleep(Integer.parseInt(timeout) * 1000L);
             }
 
-            // Read message from Server
-            // TODO: Find out what this is doing???
-//            pktLog.newIn(objectInputStream.readObject());
-//            System.out.println(pktLog.getLastIn().getData());
         } catch (IOException | InterruptedException | ClassNotFoundException e) {
             e.printStackTrace();
         }
@@ -154,7 +151,7 @@ public class Client {
         this.ip = (String) server.get("ip");
         this.port = (String) server.get("port");
 
-        this.actions = (JSONArray) jsonObject.get("actions");
+        parseActions((JSONArray) jsonObject.get("actions"));
     }
 
     public void startClient() throws IOException, ClassNotFoundException, InterruptedException {
@@ -162,26 +159,13 @@ public class Client {
 
         // EXECUTE ACTIONS
         for (Object action : this.actions) {
-
-            String a = action.toString();
-            String[] parts = a.split("\\[", 3);
-
-            String actionType = parts[0];
-            actionType = actionType.replace(" ", "");
-
-            String toId = parts[1];
-            toId = toId.replace("] ", "");
-
-            String m = parts[2];
-            m = m.replace("]", "");
-
             if (actionType.equals("SEND")) {
                 if (!toId.contains(",")) {
                     int tries = 0;
                     boolean sent = false;
                     while(tries < Integer.parseInt(retries) && !sent){
                         objectOutputStream.writeObject(pktLog.newOut(
-                                new Packet(PacketType.MSG, // TODO: With ID
+                                new Packet(PacketType.MSG,
                                         id,
                                         toId,
                                         m,
@@ -208,7 +192,7 @@ public class Client {
                     boolean sent = false;
                     while(tries < Integer.parseInt(retries) && !sent){
                         objectOutputStream.writeObject(pktLog.newOut(
-                                new Packet(PacketType.MSG, // TODO: With name
+                                new Packet(PacketType.MSG,
                                         id,
                                         null,
                                         m,
@@ -264,5 +248,58 @@ public class Client {
             }
         }
         System.out.println("duration over");
+    }
+
+    private void parseActions(JSONArray actions){
+        for (Object action : actions) {
+
+            String[] parts = action.toString().split("\\[", 3);
+
+            String actionType = parts[0];
+            actionType = actionType.replace(" ", "");
+
+            String toId = parts[1];
+            toId = toId.replace("] ", "");
+
+            String m = parts[2];
+            m = m.replace("]", "");
+
+            this.actions.add(new Action(actionType,toId,m));
+        }
+    }
+
+    private void executeAction(){
+
+    }
+
+    private void checkMessages(){
+        // CHECK FOR MESSAGES
+        pktLog.newIn(objectInputStream.readObject());
+
+        // Send get messages request to server
+        objectOutputStream.writeObject(pktLog.newOut(
+                new Packet(PacketType.MSG_REQUEST,
+                        id,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null)));
+        try {
+            pktLog.newIn(objectInputStream.readObject());
+            PacketType messagesNumber = pktLog.getLastIn().getType();
+
+            if (messagesNumber != PacketType.ERROR) {
+                // TODO: Fix this code?!
+//                    for (int j = 0; j < messagesNumber; j++) {
+//                        String message = pktLog.getLastIn().getData();
+//                        System.out.println("Message " + j + " : " + message);
+//                    }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 }
