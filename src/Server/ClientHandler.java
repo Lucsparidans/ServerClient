@@ -62,6 +62,9 @@ public class ClientHandler implements Runnable {
                             //  user through the server but it failed
                         }
                         break;
+                    case P_KEY_REQUEST:
+                        // TODO: Return packet to sender that includes the public key of the destination
+                        break;
                     default:
                         // TODO: Implement some error resolving method for this situation
                         break;

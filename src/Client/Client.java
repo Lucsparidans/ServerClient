@@ -189,7 +189,7 @@ public class Client {
         if(!this.actions.isEmpty()){
             Action action = this.actions.poll();
             if(action.getType().equals("SEND")){
-                Packet p = null;
+                Packet p;
                 if(!action.getToID().contains(",")){
                     p = new Packet(PacketType.MSG,
                             id,
@@ -258,7 +258,6 @@ public class Client {
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
-
     }
 }
 
