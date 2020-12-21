@@ -10,8 +10,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 
-import static Shared.Packet.PacketType.ACK;
-import static Shared.Packet.PacketType.SYN;
+import static Shared.Packet.PacketType.*;
 
 /**
  * This class is instantiated for each new incoming connection and it is used to handle a client connected to this
@@ -43,31 +42,60 @@ public class ClientHandler implements Runnable {
     public void run() {
         while (active) {
             try {
+                // TODO: For each packet received send confirmation to client
                 Packet p = this.packetLogger.newIn(OIS.readObject());
-                PacketType type = p.getType();
-                switch (type) {
-                    case SYN_ACK:
-                        System.out.println("Confirmation of successful registration with client received");
-                        break;
-                    case MSG_REQUEST:
-                        // Request all incoming messages
-                        ArrayList<Message> messages = Server.checkMessages(p.getSenderID());
-                        sendMSGToClient(messages);
-                        break;
-                    case MSG:
-                        // Forward message
-                        boolean success = Server.sendMessage(p);
-                        if (!success) {
-                            // TODO: Handle the situation in which an attempt was made to send a message to another
-                            //  user through the server but it failed
-                        }
-                        break;
-                    case P_KEY_REQUEST:
-                        // TODO: Return packet to sender that includes the public key of the destination
-                        break;
-                    default:
-                        // TODO: Implement some error resolving method for this situation
-                        break;
+                boolean success;
+                if(p == null){
+                    // TODO: Handle!
+                }
+                else {
+                    PacketType type = p.getType();
+                    switch (type) {
+                        case SYN_ACK:
+                            System.out.println("Confirmation of successful registration with client received");
+                            break;
+                        case MSG_REQUEST:
+                            // Request all incoming messages
+                            ArrayList<Message> messages = Server.checkMessages(p.getSenderID());
+                            success = sendMSG(messages);
+                            if (!success) {
+                                // TODO: HANDLE!
+                            }
+                            break;
+                        case MSG:
+                            // Forward message
+                            success = Server.sendMessage(p);
+                            if (!success) {
+                                // TODO: Handle the situation in which an attempt was made to send a message to another
+                                //  user through the server but it failed
+                            }
+                            break;
+                        case P_KEY_REQUEST:
+                            if (p.getDestID() != null) {
+                                String pKey = Server.getPublicKeyByID(p.getDestID());
+                                // TODO: Handle situation where one of these value is null
+                                if (pKey != null) {
+                                    success = sendToClient(new Packet(
+                                            PacketType.P_KEY_REQUEST,
+                                            p.getSenderID(),
+                                            p.getDestID(),
+                                            null,
+                                            null,
+                                            null,
+                                            null,
+                                            pKey
+                                    ));
+                                    if (!success) {
+                                        // TODO: HANDLE!
+                                    }
+                                }
+                            }
+                            // TODO: Return packet to sender that includes the public key of the destination
+                            break;
+                        default:
+                            // TODO: Implement some error resolving method for this situation
+                            break;
+                    }
                 }
             } catch (ClassNotFoundException | IOException e) {
                 e.printStackTrace();
@@ -86,9 +114,22 @@ public class ClientHandler implements Runnable {
      * @param messages This array includes all unread messages
      * @return Returns true if message was successfully sent
      */
-    private boolean sendMSGToClient(ArrayList<Message> messages) {
+    private boolean sendMSG(ArrayList<Message> messages) {
         // TODO: Decide on either send message count and then all messages in different packets or
         //  send everything by using serialisation
+        return false;
+    }
+
+    private boolean sendToClient(Packet p){
+        try{
+            OOS.writeObject(packetLogger.newOut(p));
+            Packet packetIn = packetLogger.newIn(OIS.readObject());
+            if(packetIn.getType() == RECEIVED_CONFIRM){
+                return true;
+            }
+        }catch(IOException | ClassNotFoundException e){
+            e.printStackTrace();
+        }
         return false;
     }
 
