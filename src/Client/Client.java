@@ -1,5 +1,6 @@
 package Client;
 
+import Server.Message;
 import Shared.Packet;
 import Shared.Packet.DataFormat;
 import Shared.Packet.PacketType;
@@ -12,6 +13,7 @@ import org.json.simple.parser.ParseException;
 import java.io.*;
 import java.net.ConnectException;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.PriorityQueue;
 
 public class Client {
@@ -118,6 +120,17 @@ public class Client {
         return sock;
     }
 
+    public void startClient() throws IOException, ClassNotFoundException, InterruptedException {
+        long endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 1000L;
+
+        while(System.currentTimeMillis() < endTime){
+            checkMessages();
+            executeAction();
+        }
+
+        System.out.println("duration over");
+    }
+
     /**
      * Method that parses the JSON file and saves the included information
      *
@@ -154,102 +167,6 @@ public class Client {
         parseActions((JSONArray) jsonObject.get("actions"));
     }
 
-    public void startClient() throws IOException, ClassNotFoundException, InterruptedException {
-        long startingTime = System.currentTimeMillis();
-
-        // EXECUTE ACTIONS
-        for (Object action : this.actions) {
-            if (actionType.equals("SEND")) {
-                if (!toId.contains(",")) {
-                    int tries = 0;
-                    boolean sent = false;
-                    while(tries < Integer.parseInt(retries) && !sent){
-                        objectOutputStream.writeObject(pktLog.newOut(
-                                new Packet(PacketType.MSG,
-                                        id,
-                                        toId,
-                                        m,
-                                        DataFormat.STRING,
-                                        null,
-                                        null,
-                                        null)));
-                        Packet p = (Packet)objectInputStream.readObject();
-                        if(p!=null) {
-                            if (p.getData().equals("Success message sent"))
-                                sent = true;
-                            else {
-                                tries = +1;
-                                Thread.sleep(Integer.parseInt(timeout)*1000L);
-                            }
-                        }
-                    }
-                } else {
-                    String[] name = toId.split(",", 2);
-                    String firstName = name[0].replace(" ", "");
-                    String lastName = name[1].replace(" ", "");
-
-                    int tries = 0;
-                    boolean sent = false;
-                    while(tries < Integer.parseInt(retries) && !sent){
-                        objectOutputStream.writeObject(pktLog.newOut(
-                                new Packet(PacketType.MSG,
-                                        id,
-                                        null,
-                                        m,
-                                        DataFormat.STRING,
-                                        firstName,
-                                        lastName,
-                                        null)));
-                        Packet p = (Packet)objectInputStream.readObject();
-                        if(p!=null) {
-                            if (p.getData().equals("Success message sent"))
-                                sent = true;
-                            else {
-                                tries = +1;
-                                Thread.sleep(Integer.parseInt(timeout) * 1000L);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // CHECK FOR MESSAGES
-        double milliSeconds = Double.parseDouble(this.duration) * 1000;
-        System.out.println("checking for messages..");
-        // Constantly checking for new messages
-        while (System.currentTimeMillis() < startingTime + milliSeconds) {
-
-            pktLog.newIn(objectInputStream.readObject());
-
-            // Send get messages request to server
-            objectOutputStream.writeObject(pktLog.newOut(
-                    new Packet(PacketType.MSG_REQUEST,
-                            id,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null)));
-            try {
-                pktLog.newIn(objectInputStream.readObject());
-                PacketType messagesNumber = pktLog.getLastIn().getType();
-
-                if (messagesNumber != PacketType.ERROR) {
-                    // TODO: Fix this code?!
-//                    for (int j = 0; j < messagesNumber; j++) {
-//                        String message = pktLog.getLastIn().getData();
-//                        System.out.println("Message " + j + " : " + message);
-//                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        System.out.println("duration over");
-    }
-
     private void parseActions(JSONArray actions){
         for (Object action : actions) {
 
@@ -269,37 +186,135 @@ public class Client {
     }
 
     private void executeAction(){
-
+        if(!this.actions.isEmpty()){
+            Action action = this.actions.poll();
+            if(action.getType().equals("SEND")){
+                Packet p = null;
+                if(!action.getToID().contains(",")){
+                    p = new Packet(PacketType.MSG,
+                            id,
+                            action.getToID(),
+                            action.getMessage(),
+                            DataFormat.MESSAGE,
+                            null,
+                            null,
+                            null);
+                }
+                else{
+                    String[] name = action.getToID().split(",", 2);
+                    String firstName = name[0].replace(" ", "");
+                    String lastName = name[1].replace(" ", "");
+                    p = new Packet(PacketType.MSG,
+                            id,
+                            null,
+                            action.getMessage(),
+                            DataFormat.MESSAGE,
+                            firstName,
+                            lastName,
+                            null);
+                }
+                sendEncryptedMessage(p);
+            }
+        }
     }
 
+    private void sendEncryptedMessage(Packet packet){
+        // TODO: Request key
+        // TODO: Encrypt
+        // TODO: Send (Using the retries)
+    }
     private void checkMessages(){
-        // CHECK FOR MESSAGES
-        pktLog.newIn(objectInputStream.readObject());
-
-        // Send get messages request to server
-        objectOutputStream.writeObject(pktLog.newOut(
-                new Packet(PacketType.MSG_REQUEST,
-                        id,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null)));
-        try {
-            pktLog.newIn(objectInputStream.readObject());
-            PacketType messagesNumber = pktLog.getLastIn().getType();
-
-            if (messagesNumber != PacketType.ERROR) {
-                // TODO: Fix this code?!
-//                    for (int j = 0; j < messagesNumber; j++) {
-//                        String message = pktLog.getLastIn().getData();
-//                        System.out.println("Message " + j + " : " + message);
-//                    }
+        try{
+            // Request messages from the server for this client
+            objectOutputStream.writeObject(pktLog.newOut(
+                    new Packet(PacketType.MSG_REQUEST,
+                            id,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null)
+            ));
+            // Response from server
+            Packet p = pktLog.newIn(objectInputStream.readObject());
+            DataFormat dataFormat = p.getDataFormat();
+            switch (dataFormat){
+                case STRING:
+                    System.out.printf("Message: %s\n",p.getData());
+                    break;
+                case MESSAGE:
+                    System.out.printf("Message: %s\n",((Message)p.getData()).getMessage());
+                    break;
+                case ARRAYLIST_MESSAGES:
+                    ArrayList<?> messages = (ArrayList<?>) p.getData();
+                    for(Object message : messages){
+                        Message m = (Message) message;
+                        // TODO: Decrypt the data
+                        System.out.printf("Message: %s\n",m.getMessage());
+                    }
+                    break;
             }
-        } catch (IOException e) {
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
 
     }
 }
+
+// region old
+// EXECUTE ACTIONS
+//        for (Object action : this.actions) {
+//            if (actionType.equals("SEND")) {
+//                if (!toId.contains(",")) {
+//                    int tries = 0;
+//                    boolean sent = false;
+//                    while(tries < Integer.parseInt(retries) && !sent){
+//                        objectOutputStream.writeObject(pktLog.newOut(
+//                                new Packet(PacketType.MSG,
+//                                        id,
+//                                        toId,
+//                                        m,
+//                                        DataFormat.STRING,
+//                                        null,
+//                                        null,
+//                                        null)));
+//                        Packet p = (Packet)objectInputStream.readObject();
+//                        if(p!=null) {
+//                            if (p.getData().equals("Success message sent"))
+//                                sent = true;
+//                            else {
+//                                tries = +1;
+//                                Thread.sleep(Integer.parseInt(timeout)*1000L);
+//                            }
+//                        }
+//                    }
+//                } else {
+//
+//
+//                    int tries = 0;
+//                    boolean sent = false;
+//                    while(tries < Integer.parseInt(retries) && !sent){
+//                        objectOutputStream.writeObject(pktLog.newOut(
+//                                new Packet(PacketType.MSG,
+//                                        id,
+//                                        null,
+//                                        m,
+//                                        DataFormat.STRING,
+//                                        firstName,
+//                                        lastName,
+//                                        null)));
+//                        Packet p = (Packet)objectInputStream.readObject();
+//                        if(p!=null) {
+//                            if (p.getData().equals("Success message sent"))
+//                                sent = true;
+//                            else {
+//                                tries = +1;
+//                                Thread.sleep(Integer.parseInt(timeout) * 1000L);
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+// endregion

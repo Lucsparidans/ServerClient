@@ -9,6 +9,7 @@ public class Packet implements Serializable {
         ACK,
         SYN_ACK,
         MSG_REQUEST,
+        P_KEY_REQUEST,
         MSG,
         RECEIVED_CONFIRM,
         NO_MSGs,

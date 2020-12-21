@@ -147,9 +147,6 @@ public class Server {
         String id = NAME_TO_ID.get(name);
         return INFO_BY_ID.get(id).getPublicKey();
     }
-
-
-
 }
 
 

@@ -81,10 +81,12 @@ public class ClientHandler implements Runnable {
      * This method sends all messages for the client this process in handling to them
      *
      * @param messages This array includes all unread messages
+     * @return Returns true if message was successfully sent
      */
-    private void sendMSGToClient(ArrayList<Message> messages) {
+    private boolean sendMSGToClient(ArrayList<Message> messages) {
         // TODO: Decide on either send message count and then all messages in different packets or
         //  send everything by using serialisation
+        return false;
     }
 
     /**
