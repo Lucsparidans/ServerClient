@@ -12,6 +12,7 @@ import java.util.HashMap;
 public class Server {
 
     private static final ArrayList<ClientHandler> SESSIONS = new ArrayList<>();
+    private static final HashMap<ClientHandler, Thread> THREAD_BY_CLIENT = new HashMap<>();
     private static final HashMap<String, ArrayList<Message>> MSG_BY_ID = new HashMap<>();
     private static final HashMap<String, ClientInfo> INFO_BY_ID = new HashMap<>();
     private static final HashMap<String, String> NAME_TO_ID = new HashMap<>();
@@ -29,7 +30,9 @@ public class Server {
             Socket s = ss.accept();
             ClientHandler clientHandler = new ClientHandler(s);
             clientHandler.register();
+            SESSIONS.add(clientHandler);
             Thread thread = new Thread(clientHandler);
+            THREAD_BY_CLIENT.put(clientHandler,thread);
             thread.start();
         }
     }
@@ -38,7 +41,7 @@ public class Server {
      * Method that takes care of adding a new user to the database (and confirms authenticity?)
      *
      * @param packetIn Packet including the SYN request
-     * @return A string with feedback TODO: Change this
+     * @return true when client successfully registered, otherwise false
      */
     public synchronized static boolean register(Packet packetIn) {
         if (ID_LIST.contains(packetIn.getSenderID())) {
@@ -58,7 +61,9 @@ public class Server {
     }
 
     public static synchronized ArrayList<Message> checkMessages(String id) throws IOException, ClassNotFoundException {
-        return MSG_BY_ID.get(id);
+        ArrayList<Message> messages = MSG_BY_ID.get(id);
+        MSG_BY_ID.get(id).clear();
+        return messages;
         // region OLD CODE
 //        // CHECK FOR MESSAGES
 //        String clientId = in.getSenderID();
@@ -180,6 +185,16 @@ public class Server {
             throw new IllegalStateException("Sending packet without destination!");
         }
     }
+    public synchronized static String getPublicKeyByID(String id){
+        return INFO_BY_ID.get(id).getPublicKey();
+    }
+    public synchronized static String getPublicKeyByName(String name){
+        String id = NAME_TO_ID.get(name);
+        return INFO_BY_ID.get(id).getPublicKey();
+    }
+
+
+
 }
 
 

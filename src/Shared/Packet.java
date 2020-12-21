@@ -24,7 +24,7 @@ public class Packet implements Serializable {
     // region Variables
     private static final long serialVersionUID = 1L;
     private PacketType type;
-    private DataFormat dataFormat;
+    private final DataFormat dataFormat;
     private String senderID;
     private String destID;
     private Object data;
