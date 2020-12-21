@@ -11,6 +11,7 @@ import java.util.HashMap;
 
 public class Server {
 
+    private static final int CLIENT_LIMIT = 4;
     private static final ArrayList<ClientHandler> SESSIONS = new ArrayList<>();
     private static final HashMap<ClientHandler, Thread> THREAD_BY_CLIENT = new HashMap<>();
     private static final HashMap<String, ArrayList<Message>> MSG_BY_ID = new HashMap<>();
@@ -21,19 +22,16 @@ public class Server {
     public static void main(String[] args) throws IOException, ClassNotFoundException {
         ServerSocket ss = new ServerSocket(4999);
         while (!ss.isClosed()) {
-            // TODO: Accept all incoming connections while there is capacity for them
-            // TODO: Handle all accepted connection on a worker thread (Master-worker architecture)
-            // TODO: Handle all generated threads
-            // TODO: Collect all threads in some data structure
             // TODO: create method to shutdown (all) threads
-            // TODO: Add synchronisation to prevent concurrent access exceptions
-            Socket s = ss.accept();
-            ClientHandler clientHandler = new ClientHandler(s);
-            clientHandler.register();
-            SESSIONS.add(clientHandler);
-            Thread thread = new Thread(clientHandler);
-            THREAD_BY_CLIENT.put(clientHandler,thread);
-            thread.start();
+            if(SESSIONS.size() < CLIENT_LIMIT){
+                Socket s = ss.accept();
+                ClientHandler clientHandler = new ClientHandler(s);
+                clientHandler.register();
+                SESSIONS.add(clientHandler);
+                Thread thread = new Thread(clientHandler);
+                THREAD_BY_CLIENT.put(clientHandler,thread);
+                thread.start();
+            }
         }
     }
 
@@ -64,49 +62,6 @@ public class Server {
         ArrayList<Message> messages = MSG_BY_ID.get(id);
         MSG_BY_ID.get(id).clear();
         return messages;
-        // region OLD CODE
-//        // CHECK FOR MESSAGES
-//        String clientId = in.getSenderID();
-//        ArrayList<String> myMessages = getMyMessages(clientId);
-//        int messagesNumber = myMessages.size();
-//
-//        if (messagesNumber > 0) {
-//            // Send messages number to Client
-//            OOS.writeObject(pktLog.newOut(     // Sends the number of messages it will send
-//                    new Packet(in.getType(),
-//                            in.getSenderID(),
-//                            in.getDestID(),
-//                            Integer.toString(messagesNumber),
-//                            null,
-//                            null,
-//                            null)
-//            ));
-//            for (String mes : myMessages) {
-//                // Send messages to client
-//                OOS.writeObject(pktLog.newOut(     // Sends the number of messages it will send
-//                        new Packet(in.getType(),
-//                                in.getSenderID(),
-//                                in.getDestID(),
-//                                mes,
-//                                null,
-//                                null,
-//                                null)
-//                ));
-//                System.out.println(mes);
-//            }
-//        } else {
-//            // Send to Client that are no messages
-//            OOS.writeObject(pktLog.newOut(     // Sends the number of messages it will send
-//                    new Packet(PacketType.NO_MSGs,
-//                            in.getSenderID(),
-//                            in.getDestID(),
-//                            "No available messages",
-//                            null,
-//                            null,
-//                            null)
-//            ));
-//        }
-        // endregion
     }
 
     public synchronized static boolean sendMessage(Packet pkt) {
