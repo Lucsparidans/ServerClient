@@ -44,59 +44,89 @@ public class ClientHandler implements Runnable {
             try {
                 // TODO: For each packet received send confirmation to client
                 Packet p = this.packetLogger.newIn(OIS.readObject());
+                // Consider situation in which p = null?
                 boolean success;
-                if(p == null){
-                    // TODO: Handle!
+                OOS.writeObject(packetLogger.newOut(new Packet(
+                        RECEIVED_CONFIRM,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                )));
+                PacketType type = p.getType();
+                switch (type) {
+                    case SYN_ACK:
+                        System.out.println("Confirmation of successful registration with client received");
+                        break;
+                    case MSG_REQUEST:
+                        // Request all incoming messages
+                        ArrayList<Message> messages = Server.checkMessages(p.getSenderID());
+                        success = sendMSG(messages);
+                        if (!success) {
+                            // TODO: HANDLE!
+                        }
+                        break;
+                    case MSG:
+                        // Forward message
+                        success = Server.sendMessage(p);
+                        if (!success) {
+                            // TODO: Handle the situation in which an attempt was made to send a message to another
+                            //  user through the server but it failed
+                        }
+                        break;
+                    case PUBLIC_KEY_REQUEST:
+                        // Since the public key is being shared here one does not have to encrypt this public key with
+                        // the public key of the recipient
+                        if (p.getDestID() != null) {
+                            String pKey = Server.getPublicKeyByID(p.getDestID());
+                            // TODO: failure to send
+                            success = sendToClient(new Packet(
+                                    PacketType.PUBLIC_KEY_REQUEST,
+                                    p.getSenderID(),
+                                    p.getDestID(),
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    pKey
+                            ));
+
+                        }
+                        else if(p.hasName()){
+                            String pKey = Server.getPublicKeyByName(p.getFullName());
+                            // TODO: failure to send
+                            success = sendToClient(new Packet(
+                                    PacketType.PUBLIC_KEY_REQUEST,
+                                    p.getSenderID(),
+                                    p.getDestID(),
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    pKey
+                            ));
+                        }
+                        else{
+                            // Send an error packet if the destination is undefined
+                            OOS.writeObject(packetLogger.newOut(new Packet(ERROR,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null)));
+                        }
+                        break;
+                    default:
+                        // TODO: Implement some error resolving method for this situation
+                        //  (Also check whether it will every get here)
+                        break;
                 }
-                else {
-                    PacketType type = p.getType();
-                    switch (type) {
-                        case SYN_ACK:
-                            System.out.println("Confirmation of successful registration with client received");
-                            break;
-                        case MSG_REQUEST:
-                            // Request all incoming messages
-                            ArrayList<Message> messages = Server.checkMessages(p.getSenderID());
-                            success = sendMSG(messages);
-                            if (!success) {
-                                // TODO: HANDLE!
-                            }
-                            break;
-                        case MSG:
-                            // Forward message
-                            success = Server.sendMessage(p);
-                            if (!success) {
-                                // TODO: Handle the situation in which an attempt was made to send a message to another
-                                //  user through the server but it failed
-                            }
-                            break;
-                        case P_KEY_REQUEST:
-                            if (p.getDestID() != null) {
-                                String pKey = Server.getPublicKeyByID(p.getDestID());
-                                // TODO: Handle situation where one of these value is null
-                                if (pKey != null) {
-                                    success = sendToClient(new Packet(
-                                            PacketType.P_KEY_REQUEST,
-                                            p.getSenderID(),
-                                            p.getDestID(),
-                                            null,
-                                            null,
-                                            null,
-                                            null,
-                                            pKey
-                                    ));
-                                    if (!success) {
-                                        // TODO: HANDLE!
-                                    }
-                                }
-                            }
-                            // TODO: Return packet to sender that includes the public key of the destination
-                            break;
-                        default:
-                            // TODO: Implement some error resolving method for this situation
-                            break;
-                    }
-                }
+
             } catch (ClassNotFoundException | IOException e) {
                 e.printStackTrace();
             }
@@ -115,8 +145,25 @@ public class ClientHandler implements Runnable {
      * @return Returns true if message was successfully sent
      */
     private boolean sendMSG(ArrayList<Message> messages) {
-        // TODO: Decide on either send message count and then all messages in different packets or
-        //  send everything by using serialisation
+        try {
+            // Send array of messages in one packet to the client and wait for confirmation of receiving
+            // TODO: Encrypt the data in the messages
+            OOS.writeObject(packetLogger.newOut(new Packet(
+                            MSG,
+                            null,
+                            null,
+                            messages,
+                            Packet.DataFormat.ARRAYLIST_MESSAGES,
+                            null,
+                            null,
+                            null
+                    )
+            ));
+            Packet conf = packetLogger.newIn(OIS.readObject());
+            return conf.getType() == RECEIVED_CONFIRM;
+        }catch(IOException | ClassNotFoundException e){
+            e.printStackTrace();
+        }
         return false;
     }
 

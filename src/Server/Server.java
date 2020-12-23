@@ -180,8 +180,6 @@ public class Server {
         Message m3 = new Message("abc", "abc", "What are you doing?");
         messages.add(m3);
 
-
-        //TODO: Provide exit clause for this loop
         while (true) {
             System.out.println("Waiting for a client..");
             // Accept Client

@@ -238,8 +238,23 @@ public class Client {
                             null,
                             null)
             ));
+            Packet conf = pktLog.newIn(objectInputStream.readObject());
+            if(conf.getType() != PacketType.RECEIVED_CONFIRM){
+                // TODO: Handle!
+            }
             // Response from server
             Packet p = pktLog.newIn(objectInputStream.readObject());
+            // Send confirmation of receiving the message
+            objectOutputStream.writeObject(pktLog.newOut(new Packet(
+                    PacketType.RECEIVED_CONFIRM,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                    )));
             DataFormat dataFormat = p.getDataFormat();
             switch (dataFormat){
                 case STRING:
