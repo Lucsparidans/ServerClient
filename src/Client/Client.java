@@ -200,8 +200,8 @@ public class Client {
     }
 
     private void executeAction(){
-        System.out.println("Executing action");
         if(!this.actions.isEmpty()){
+            System.out.println("Executing action");
             Action action = this.actions.get(0);
             this.actions.remove(0);
             if(action.getType().equals("SEND")){
