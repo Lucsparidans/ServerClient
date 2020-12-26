@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="dev.paseto:jpaseto-bouncy-castle:0.5.0" type="repository">
+    <properties maven-id="dev.paseto:jpaseto-bouncy-castle:0.5.0" />
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/jpaseto-bouncy-castle-0.5.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jpaseto-impl-0.5.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jpaseto-api-0.5.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/bcprov-jdk15on-1.64.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
