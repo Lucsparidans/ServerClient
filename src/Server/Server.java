@@ -27,6 +27,7 @@ public class Server {
     private static final HashMap<String, ClientInfo> INFO_BY_ID = new HashMap<>();
     private static final HashMap<String, String> NAME_TO_ID = new HashMap<>();
     private static final ArrayList<String> ID_LIST = new ArrayList<>();
+    private static final Object LOCK = new Object();
 
     public static void main(String[] args) {
         System.out.println(INET_ADDRESS);
@@ -55,120 +56,131 @@ public class Server {
      * @param packetIn Packet including the SYN request
      * @return true when client successfully registered, otherwise false
      */
-    public synchronized static boolean register(Packet packetIn) {
-        if (ID_LIST.contains(packetIn.getSenderID())) {
-            // User is already registered
-            return false;
-        } else {
-            // Add user to the database structures (multiple formats for higher performance on specific queries)
-            INFO_BY_ID.put(packetIn.getSenderID(), new ClientInfo(
-                    packetIn.getSenderID(),
-                    packetIn.getFirstName(),
-                    packetIn.getLastName(),
-                    packetIn.getPublicKey()));
-            NAME_TO_ID.put(packetIn.getFullName(), packetIn.getSenderID());
-            ID_LIST.add(packetIn.getSenderID());
-            MSG_BY_ID.put(packetIn.getSenderID(),new ArrayList<>());
-            return true;
+    public static boolean register(Packet packetIn) {
+        synchronized (LOCK) {
+            if (ID_LIST.contains(packetIn.getSenderID())) {
+                // User is already registered
+                return false;
+            } else {
+                // Add user to the database structures (multiple formats for higher performance on specific queries)
+                INFO_BY_ID.put(packetIn.getSenderID(), new ClientInfo(
+                        packetIn.getSenderID(),
+                        packetIn.getFirstName(),
+                        packetIn.getLastName(),
+                        packetIn.getPublicKey()));
+                NAME_TO_ID.put(packetIn.getFullName(), packetIn.getSenderID());
+                ID_LIST.add(packetIn.getSenderID());
+                MSG_BY_ID.put(packetIn.getSenderID(), new ArrayList<>());
+                return true;
+            }
         }
     }
 
-    public static synchronized ArrayList<Message> checkMessages(String id) throws IOException, ClassNotFoundException {
-        ArrayList<Message> messages = MSG_BY_ID.get(id);
-        MSG_BY_ID.get(id).clear();
-        return messages;
+    public static ArrayList<Message> checkMessages(String id) throws IOException, ClassNotFoundException {
+        synchronized (LOCK) {
+            ArrayList<Message> messages = MSG_BY_ID.get(id);
+            MSG_BY_ID.get(id).clear();
+            return messages;
+        }
     }
 
-    public synchronized static boolean sendMessage(Packet pkt) {
-        // TODO: Check whether the sender is registered??
-        if (pkt.getDestID() != null) {
-            if (ID_LIST.contains(pkt.getDestID())) {
-                // ID is registered
-                DataFormat dataFormat = pkt.getDataFormat();
-                switch (dataFormat){
-                    case STRING:
-                        MSG_BY_ID.get(pkt.getDestID()).add(new Message(
-                                pkt.getSenderID(),
-                                pkt.getDestID(),
-                                (String)pkt.getData()));
-                        break;
-                    case MESSAGE:
-                        MSG_BY_ID.get(pkt.getDestID()).add(new Message(
-                                pkt.getSenderID(),
-                                pkt.getDestID(),
-                                ((Message) pkt.getData()).getMessage()));
-                        break;
-                    case ARRAYLIST_MESSAGES:
-                        ArrayList<?> messages = (ArrayList<?>) pkt.getData();
-                        for (Object message : messages) {
+    public static boolean sendMessage(Packet pkt) {
+        synchronized (LOCK) {
+            // TODO: Check whether the sender is registered??
+            if (pkt.getDestID() != null) {
+                if (ID_LIST.contains(pkt.getDestID())) {
+                    // ID is registered
+                    DataFormat dataFormat = pkt.getDataFormat();
+                    switch (dataFormat) {
+                        case STRING:
                             MSG_BY_ID.get(pkt.getDestID()).add(new Message(
                                     pkt.getSenderID(),
                                     pkt.getDestID(),
-                                    ((Message) message).getMessage()));
-                        }
+                                    (String) pkt.getData()));
+                            break;
+                        case MESSAGE:
+                            MSG_BY_ID.get(pkt.getDestID()).add(new Message(
+                                    pkt.getSenderID(),
+                                    pkt.getDestID(),
+                                    ((Message) pkt.getData()).getMessage()));
+                            break;
+                        case ARRAYLIST_MESSAGES:
+                            ArrayList<?> messages = (ArrayList<?>) pkt.getData();
+                            for (Object message : messages) {
+                                MSG_BY_ID.get(pkt.getDestID()).add(new Message(
+                                        pkt.getSenderID(),
+                                        pkt.getDestID(),
+                                        ((Message) message).getMessage()));
+                            }
+                    }
+                    // Message successfully sent
+                    return true;
+                } else {
+                    // ID is not registered
+                    // Cannot send message
+                    return false;
                 }
-                // Message successfully sent
-                return true;
-            } else {
-                // ID is not registered
-                // Cannot send message
-                return false;
-            }
-        } else if (pkt.hasName()) {
-            String fullName = pkt.getFullName();
-            String ID = NAME_TO_ID.get(fullName);
-            if (ID != null) {
-                // ID was found in the database
-                DataFormat dataFormat = pkt.getDataFormat();
-                switch (dataFormat) {
-                    case STRING:
-                        MSG_BY_ID.get(ID).add(new Message(
-                                pkt.getSenderID(),
-                                ID,
-                                (String) pkt.getData()));
-                        break;
-                    case MESSAGE:
-                        MSG_BY_ID.get(ID).add(new Message(
-                                pkt.getSenderID(),
-                                ID,
-                                ((Message) pkt.getData()).getMessage()));
-                        break;
-                    case ARRAYLIST_MESSAGES:
-                        ArrayList<?> messages = (ArrayList<?>) pkt.getData();
-                        for (Object message : messages) {
+            } else if (pkt.hasName()) {
+                String fullName = pkt.getFullName();
+                String ID = NAME_TO_ID.get(fullName);
+                if (ID != null) {
+                    // ID was found in the database
+                    DataFormat dataFormat = pkt.getDataFormat();
+                    switch (dataFormat) {
+                        case STRING:
                             MSG_BY_ID.get(ID).add(new Message(
                                     pkt.getSenderID(),
                                     ID,
-                                    ((Message) message).getMessage()));
-                        }
+                                    (String) pkt.getData()));
+                            break;
+                        case MESSAGE:
+                            MSG_BY_ID.get(ID).add(new Message(
+                                    pkt.getSenderID(),
+                                    ID,
+                                    ((Message) pkt.getData()).getMessage()));
+                            break;
+                        case ARRAYLIST_MESSAGES:
+                            ArrayList<?> messages = (ArrayList<?>) pkt.getData();
+                            for (Object message : messages) {
+                                MSG_BY_ID.get(ID).add(new Message(
+                                        pkt.getSenderID(),
+                                        ID,
+                                        ((Message) message).getMessage()));
+                            }
+                    }
+                    // Message(s) successfully sent
+                    return true;
+                } else {
+                    // ID was not found in the database
+                    // Cannot send the message
+                    return false;
                 }
-                // Message(s) successfully sent
-                return true;
             } else {
-                // ID was not found in the database
-                // Cannot send the message
-                return false;
+                // Something went wrong!
+                // TODO: Handle this without throwing an exception
+                throw new IllegalStateException("Sending packet without destination!");
             }
-        } else {
-            // Something went wrong!
-            // TODO: Handle this without throwing an exception
-            throw new IllegalStateException("Sending packet without destination!");
         }
     }
-    public synchronized static boolean isInDataBase(String data, ClientIDType type){
-        if(type == ClientIDType.NAME) {
-            return NAME_TO_ID.containsKey(data);
+    public static boolean isInDataBase(String data, ClientIDType type){
+        synchronized (LOCK) {
+            if (type == ClientIDType.NAME) {
+                return NAME_TO_ID.containsKey(data);
+            }
+            return ID_LIST.contains(data);
         }
-        return ID_LIST.contains(data);
-
     }
     // TODO: Use ClientIDType for getting the public key
-    public synchronized static String getPublicKeyByID(String id){
-        return INFO_BY_ID.get(id).getPublicKey();
+    public static String getPublicKeyByID(String id){
+        synchronized (LOCK) {
+            return INFO_BY_ID.get(id).getPublicKey();
+        }
     }
-    public synchronized static String getPublicKeyByName(String name){
-        String id = NAME_TO_ID.get(name);
-        return INFO_BY_ID.get(id).getPublicKey();
+    public static String getPublicKeyByName(String name) {
+        synchronized (LOCK) {
+            String id = NAME_TO_ID.get(name);
+            return INFO_BY_ID.get(id).getPublicKey();
+        }
     }
 }
 

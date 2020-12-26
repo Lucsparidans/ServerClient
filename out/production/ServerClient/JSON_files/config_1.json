@@ -1,6 +1,6 @@
 {
 	"general": {
-		"duration": "5",
+		"duration": "360",
 		"retries": "5",
 		"timeout": "10"
 	},
