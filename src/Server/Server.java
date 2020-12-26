@@ -1,15 +1,24 @@
 package Server;
 
+import Client.Client.ClientIDType;
 import Shared.Packet;
 import Shared.Packet.DataFormat;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Server {
+
+    // TODO: Add locked synchronisation for data structure
+
+    public static final int PORT = 4444;
+    public static final InetAddress INET_ADDRESS = InetAddress.getLoopbackAddress();
+    private static final int BACK_LOG = 5;
+
 
     private static final int CLIENT_LIMIT = 4;
     private static final ArrayList<ClientHandler> SESSIONS = new ArrayList<>();
@@ -19,19 +28,24 @@ public class Server {
     private static final HashMap<String, String> NAME_TO_ID = new HashMap<>();
     private static final ArrayList<String> ID_LIST = new ArrayList<>();
 
-    public static void main(String[] args) throws IOException, ClassNotFoundException {
-        ServerSocket ss = new ServerSocket(4999);
-        while (!ss.isClosed()) {
-            // TODO: create method to shutdown (all) threads
-            if(SESSIONS.size() < CLIENT_LIMIT){
-                Socket s = ss.accept();
-                ClientHandler clientHandler = new ClientHandler(s);
-                clientHandler.register();
-                SESSIONS.add(clientHandler);
-                Thread thread = new Thread(clientHandler);
-                THREAD_BY_CLIENT.put(clientHandler,thread);
-                thread.start();
+    public static void main(String[] args) {
+        System.out.println(INET_ADDRESS);
+        try {
+            ServerSocket ss = new ServerSocket(PORT,BACK_LOG,INET_ADDRESS);
+            while (!ss.isClosed()) {
+                // TODO: create method to shutdown (all) threads
+                if(SESSIONS.size() < CLIENT_LIMIT){
+                    Socket socket = ss.accept();
+                    System.out.println("New socket");
+                    ClientHandler clientHandler = new ClientHandler(socket);
+                    SESSIONS.add(clientHandler);
+                    Thread thread = new Thread(clientHandler);
+                    THREAD_BY_CLIENT.put(clientHandler,thread);
+                    thread.start();
+                }
             }
+        }catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -54,6 +68,7 @@ public class Server {
                     packetIn.getPublicKey()));
             NAME_TO_ID.put(packetIn.getFullName(), packetIn.getSenderID());
             ID_LIST.add(packetIn.getSenderID());
+            MSG_BY_ID.put(packetIn.getSenderID(),new ArrayList<>());
             return true;
         }
     }
@@ -140,6 +155,14 @@ public class Server {
             throw new IllegalStateException("Sending packet without destination!");
         }
     }
+    public synchronized static boolean isInDataBase(String data, ClientIDType type){
+        if(type == ClientIDType.NAME) {
+            return NAME_TO_ID.containsKey(data);
+        }
+        return ID_LIST.contains(data);
+
+    }
+    // TODO: Use ClientIDType for getting the public key
     public synchronized static String getPublicKeyByID(String id){
         return INFO_BY_ID.get(id).getPublicKey();
     }

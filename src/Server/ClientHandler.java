@@ -1,6 +1,8 @@
 package Server;
 
+import Client.Client;
 import Shared.Packet;
+import Shared.Packet.DataFormat;
 import Shared.Packet.PacketType;
 import Shared.PacketLogger;
 
@@ -21,15 +23,15 @@ import static Shared.Packet.PacketType.*;
 public class ClientHandler implements Runnable {
 
     private final Socket clientSocket;
-    private final ObjectInputStream OIS;
-    private final ObjectOutputStream OOS;
+    private ObjectInputStream OIS;
+    private ObjectOutputStream OOS;
     private final PacketLogger packetLogger;
     private boolean active;
 
     public ClientHandler(Socket s) throws IOException {
         this.clientSocket = s;
-        this.OIS = new ObjectInputStream(s.getInputStream());
         this.OOS = new ObjectOutputStream(s.getOutputStream());
+        this.OIS = new ObjectInputStream(s.getInputStream());
         this.packetLogger = new PacketLogger();
         this.active = true;
     }
@@ -40,12 +42,21 @@ public class ClientHandler implements Runnable {
      */
     @Override
     public void run() {
+        System.out.println("Started client handler");
+        try {
+            System.out.println("Registering on server");
+            register();
+        } catch (IOException | ClassNotFoundException ioException) {
+            ioException.printStackTrace();
+        }
         while (active) {
             try {
                 // TODO: For each packet received send confirmation to client
                 Packet p = this.packetLogger.newIn(OIS.readObject());
                 // Consider situation in which p = null?
                 boolean success;
+                PacketType type = p.getType();
+                // Send confirmation of retrieval of the latest packet
                 OOS.writeObject(packetLogger.newOut(new Packet(
                         RECEIVED_CONFIRM,
                         null,
@@ -56,25 +67,39 @@ public class ClientHandler implements Runnable {
                         null,
                         null
                 )));
-                PacketType type = p.getType();
+
                 switch (type) {
                     case SYN_ACK:
                         System.out.println("Confirmation of successful registration with client received");
                         break;
                     case MSG_REQUEST:
                         // Request all incoming messages
-                        ArrayList<Message> messages = Server.checkMessages(p.getSenderID());
-                        success = sendMSG(messages);
-                        if (!success) {
-                            // TODO: HANDLE!
+                        if(Server.isInDataBase(p.getSenderID(), Client.ClientIDType.ID)){
+                            ArrayList<Message> messages = Server.checkMessages(p.getSenderID());
+                            success = sendMSG(messages);
+                            if (!success) {
+                                // TODO: HANDLE!
+                                System.out.println("Failed to send message or receive confirmation");
+
+                            }
+                        }
+                        else {
+                            // TODO: Handle the else
+                            System.out.println("Client is not registered!");
                         }
                         break;
                     case MSG:
                         // Forward message
-                        success = Server.sendMessage(p);
-                        if (!success) {
-                            // TODO: Handle the situation in which an attempt was made to send a message to another
-                            //  user through the server but it failed
+                        if(Server.isInDataBase(p.getDestID(), Client.ClientIDType.ID)) {
+                            success = Server.sendMessage(p);
+                            if (!success) {
+                                // TODO: Handle the situation in which an attempt was made to send a message to another
+                                //  user through the server but it failed
+                                System.out.println("Failed to send message or receive confirmation");
+                            }
+                        }
+                        else{
+                            System.out.println("Client defined by destination is not registered!");
                         }
                         break;
                     case PUBLIC_KEY_REQUEST:
@@ -153,7 +178,7 @@ public class ClientHandler implements Runnable {
                             null,
                             null,
                             messages,
-                            Packet.DataFormat.ARRAYLIST_MESSAGES,
+                            DataFormat.ARRAYLIST_MESSAGES,
                             null,
                             null,
                             null
@@ -186,7 +211,7 @@ public class ClientHandler implements Runnable {
      * @throws IOException            Possible exception
      * @throws ClassNotFoundException Possible exception
      */
-    protected void register() throws IOException, ClassNotFoundException {
+    private void register() throws IOException, ClassNotFoundException {
         Packet p = this.packetLogger.newIn(OIS.readObject());
         if (p.getType() == SYN) {
             boolean req = Server.register(p); // You need the public static access here

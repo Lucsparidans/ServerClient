@@ -1,5 +1,6 @@
 package Client;
 
+import Server.ClientHandler;
 import Shared.Packet;
 import Shared.Packet.PacketType;
 
@@ -17,6 +18,9 @@ public class TestServer {
             System.out.println("Launching server");
             ServerSocket ss = new ServerSocket(4999);
             Socket sock = ss.accept();
+            ClientHandler ch = new ClientHandler(sock);
+            new Thread(ch).start();
+
             running = true;
             ObjectOutputStream OOS = new ObjectOutputStream(sock.getOutputStream());
             ObjectInputStream OIS = new ObjectInputStream(sock.getInputStream());

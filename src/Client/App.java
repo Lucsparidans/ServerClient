@@ -2,7 +2,6 @@ package Client;
 
 
 import java.io.IOException;
-import java.security.spec.ECField;
 
 public class App {
     public static void main(String[] args) {
@@ -15,6 +14,6 @@ public class App {
         } catch (IOException | ClassNotFoundException | InterruptedException e) {
             e.printStackTrace();
         }
-            
+
     }
 }

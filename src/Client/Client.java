@@ -12,9 +12,9 @@ import org.json.simple.parser.ParseException;
 
 import java.io.*;
 import java.net.ConnectException;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.PriorityQueue;
 
 public class Client {
 
@@ -25,33 +25,41 @@ public class Client {
 
     private Socket s;
 
-    // Client Information
+    public enum ClientIDType{
+        NAME,
+        ID
+    }
+    // region Client Information
     // general
     private String duration;
     private String retries;
-    private String timeout;
 
+    private String timeout;
     // person
     private String id;
     private String name;
     private String privateKey;
-    private String publicKey;
 
+    private String publicKey;
     // server
     private String ip;
     private String port;
 
+    private static final int PORT = 4444;
     // actions
-    private final PriorityQueue<Action> actions;
+    private final ArrayList<Action> actions;
+
+    // endregion
 
     public Client(String file) {
         pktLog = new PacketLogger();
         s = null;
-        actions = new PriorityQueue<Action>();
+        actions = new ArrayList<>();
         // Parse the JSON file and connect to the server
         try {
             parseJSON(file);
-            s = connectToServer("localhost", 4999);
+            s = connectToServer(InetAddress.getLoopbackAddress(),PORT);
+            System.out.println("Socket connected");
         } catch (IOException | ParseException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -61,6 +69,7 @@ public class Client {
             objectOutputStream = new ObjectOutputStream(s.getOutputStream());
 
             boolean verified = false;
+            System.out.println("Start clientside verification");
             while (!verified) {
                 objectOutputStream.writeObject(pktLog.newOut(
                         new Packet(PacketType.SYN,
@@ -71,7 +80,7 @@ public class Client {
                                 name,
                                 name,
                                 publicKey)));
-                Packet p = (Packet) objectInputStream.readObject();
+                Packet p = pktLog.newIn(objectInputStream.readObject());
                 if (p != null) {
                     if (p.getType() == PacketType.ACK) {
                         verified = true;
@@ -87,6 +96,8 @@ public class Client {
                                         publicKey
                                 )));
                     }
+                    p = pktLog.newIn(objectInputStream.readObject());
+                    if(p.getType() == PacketType.RECEIVED_CONFIRM) System.out.println("ACK");
                 } else
                     Thread.sleep(Integer.parseInt(timeout) * 1000L);
             }
@@ -104,7 +115,7 @@ public class Client {
      * @return new socket that is connected to the server
      * @throws InterruptedException Interruption on the Thread.sleep
      */
-    private Socket connectToServer(String hostAddr, int port) throws InterruptedException {
+    private Socket connectToServer(InetAddress hostAddr, int port) throws InterruptedException {
         Socket sock = null;
         while (sock == null) {
             // REGISTRATION
@@ -121,6 +132,7 @@ public class Client {
     }
 
     public void startClient() throws IOException, ClassNotFoundException, InterruptedException {
+        System.out.println("Started client");
         long endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 1000L;
 
         while(System.currentTimeMillis() < endTime){
@@ -154,7 +166,9 @@ public class Client {
 
         JSONObject person = (JSONObject) jsonObject.get("person");
         this.id = (String) person.get("id");
-        this.name = (String) person.get("name");
+        String tmpName = (String) person.get("name");
+        String[] parts = tmpName.split(",");
+        this.name = parts[1].trim() + " " + parts[0];
 
         JSONObject keys = (JSONObject) person.get("keys");
         this.privateKey = (String) keys.get("private");
@@ -186,8 +200,10 @@ public class Client {
     }
 
     private void executeAction(){
+        System.out.println("Executing action");
         if(!this.actions.isEmpty()){
-            Action action = this.actions.poll();
+            Action action = this.actions.get(0);
+            this.actions.remove(0);
             if(action.getType().equals("SEND")){
                 Packet p;
                 if(!action.getToID().contains(",")){
@@ -254,7 +270,7 @@ public class Client {
                     null,
                     null,
                     null
-                    )));
+            )));
             DataFormat dataFormat = p.getDataFormat();
             switch (dataFormat){
                 case STRING:
