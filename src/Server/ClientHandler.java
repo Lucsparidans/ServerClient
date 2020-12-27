@@ -76,11 +76,15 @@ public class ClientHandler implements Runnable {
                         // Request all incoming messages
                         if(Server.isInDataBase(p.getSenderID(), Client.ClientIDType.ID)){
                             ArrayList<Message> messages = Server.checkMessages(p.getSenderID());
-                            success = sendMSG(messages);
-                            if (!success) {
-                                // TODO: HANDLE!
-                                System.out.println("Failed to send message or receive confirmation");
-
+                            if(messages.size() > 0) {
+                                success = sendMSG(messages);
+                                if (!success) {
+                                    // TODO: HANDLE!
+                                    System.out.println("Failed to send message or receive confirmation");
+                                }
+                            }
+                            else{
+                                sendMSG(null);
                             }
                         }
                         else {
@@ -99,6 +103,7 @@ public class ClientHandler implements Runnable {
                             }
                         }
                         else{
+                            // TODO: Fix this situation!
                             System.out.println("Client defined by destination is not registered!");
                         }
                         break;
@@ -170,24 +175,45 @@ public class ClientHandler implements Runnable {
      * @return Returns true if message was successfully sent
      */
     private boolean sendMSG(ArrayList<Message> messages) {
-        try {
-            // Send array of messages in one packet to the client and wait for confirmation of receiving
-            // TODO: Encrypt the data in the messages
-            OOS.writeObject(packetLogger.newOut(new Packet(
-                            MSG,
-                            null,
-                            null,
-                            messages,
-                            DataFormat.ARRAYLIST_MESSAGES,
-                            null,
-                            null,
-                            null
-                    )
-            ));
-            Packet conf = packetLogger.newIn(OIS.readObject());
-            return conf.getType() == RECEIVED_CONFIRM;
-        }catch(IOException | ClassNotFoundException e){
-            e.printStackTrace();
+        if(messages != null) {
+            try {
+                // Send array of messages in one packet to the client and wait for confirmation of receiving
+                // TODO: Encrypt the data in the messages
+                OOS.writeObject(packetLogger.newOut(new Packet(
+                                MSG,
+                                null,
+                                null,
+                                messages,
+                                DataFormat.ARRAYLIST_MESSAGES,
+                                null,
+                                null,
+                                null
+                        )
+                ));
+                Packet conf = packetLogger.newIn(OIS.readObject());
+                return conf.getType() == RECEIVED_CONFIRM;
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+        else{
+            try {
+                OOS.writeObject(packetLogger.newOut(new Packet(
+                                NO_MSGs,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null
+                        )
+                ));
+                Packet conf = packetLogger.newIn(OIS.readObject());
+                return conf.getType() == RECEIVED_CONFIRM;
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
         }
         return false;
     }

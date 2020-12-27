@@ -16,7 +16,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.util.ArrayList;
 
-public class Client {
+public class Client implements Runnable{
 
     private final PacketLogger pktLog;
 
@@ -77,8 +77,8 @@ public class Client {
                                 null,
                                 null,
                                 null,
-                                name,
-                                name,
+                                name.split(" ")[0],
+                                name.split(" ")[1],
                                 publicKey)));
                 Packet p = pktLog.newIn(objectInputStream.readObject());
                 if (p != null) {
@@ -91,8 +91,8 @@ public class Client {
                                         null,
                                         null,
                                         null,
-                                        name,
-                                        name,
+                                        name.split(" ")[0],
+                                        name.split(" ")[1],
                                         publicKey
                                 )));
                     }
@@ -131,16 +131,17 @@ public class Client {
         return sock;
     }
 
-    public void startClient() throws IOException, ClassNotFoundException, InterruptedException {
+    @Override
+    public void run() {
         System.out.println("Started client");
-        long endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 1000L;
-
+        long endTime = System.currentTimeMillis() + Long.parseLong(this.duration);// * 1000L;
         while(System.currentTimeMillis() < endTime){
             checkMessages();
             executeAction();
         }
 
         System.out.println("duration over");
+        System.out.println(pktLog.getLoggedSequence());
     }
 
     /**
@@ -229,16 +230,25 @@ public class Client {
                             lastName,
                             null);
                 }
-                sendEncryptedMessage(p);
+                boolean succes = sendEncryptedMessage(p);
+                // TODO: Handle failure
             }
         }
     }
 
-    private void sendEncryptedMessage(Packet packet){
+    private boolean sendEncryptedMessage(Packet packet){
         // TODO: Request key
         // TODO: Encrypt
         // TODO: Send (Using the retries)
         // TODO: Receive and verify confirmation from server
+        try {
+            objectOutputStream.writeObject(pktLog.newOut(packet));
+            Packet p = pktLog.newIn(objectInputStream.readObject());
+            return p.getType() == PacketType.RECEIVED_CONFIRM;
+        }catch(IOException | ClassNotFoundException e){
+            e.printStackTrace();
+        }
+        return false;
     }
     private void checkMessages(){
         // TODO: Send a packet to confirm receiving a packet for all incoming packets
@@ -271,23 +281,26 @@ public class Client {
                     null,
                     null
             )));
-            DataFormat dataFormat = p.getDataFormat();
-            switch (dataFormat){
-                case STRING:
-                    System.out.printf("Message: %s\n",p.getData());
-                    break;
-                case MESSAGE:
-                    System.out.printf("Message: %s\n",((Message)p.getData()).getMessage());
-                    break;
-                case ARRAYLIST_MESSAGES:
-                    ArrayList<?> messages = (ArrayList<?>) p.getData();
-                    for(Object message : messages){
-                        Message m = (Message) message;
-                        // TODO: Decrypt the data
-                        System.out.printf("Message: %s\n",m.getMessage());
-                    }
-                    break;
+            if(p.getType() != PacketType.NO_MSGs) {
+                DataFormat dataFormat = p.getDataFormat();
+                switch (dataFormat) {
+                    case STRING:
+                        System.out.printf("Message: %s\n", p.getData());
+                        break;
+                    case MESSAGE:
+                        System.out.printf("Message: %s\n", ((Message) p.getData()).getMessage());
+                        break;
+                    case ARRAYLIST_MESSAGES:
+                        ArrayList<?> messages = (ArrayList<?>) p.getData();
+                        for (Object message : messages) {
+                            Message m = (Message) message;
+                            // TODO: Decrypt the data
+                            System.out.printf("Message: %s\n", m.getMessage());
+                        }
+                        break;
+                }
             }
+            else System.out.println("No messages!");
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
