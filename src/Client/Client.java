@@ -134,7 +134,7 @@ public class Client implements Runnable{
     @Override
     public void run() {
         System.out.println("Started client");
-        long endTime = System.currentTimeMillis() + Long.parseLong(this.duration);// * 1000L;
+        long endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 1000L;
         while(System.currentTimeMillis() < endTime){
             checkMessages();
             executeAction();
@@ -259,8 +259,15 @@ public class Client implements Runnable{
 
     private void socketClose(){
         try {
-            objectOutputStream.writeObject(pktLog.newOut(new Packet(PacketType.CLOSE, null, null, null, null, null , null, null
-            )));
+            objectOutputStream.writeObject(pktLog.newOut(
+                    new Packet(PacketType.CLOSE,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null ,
+                            null,
+                            null)));
             Packet p = pktLog.newIn(objectInputStream.readObject());
             if(p.getType()==PacketType.RECEIVED_CONFIRM){
                 s.close();

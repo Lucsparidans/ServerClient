@@ -1,6 +1,6 @@
 package Server;
 
-import Client.Client;
+import Client.Client.ClientIDType;
 import Shared.Packet;
 import Shared.Packet.DataFormat;
 import Shared.Packet.PacketType;
@@ -72,44 +72,39 @@ public class ClientHandler implements Runnable {
                     case SYN_ACK:
                         System.out.println("Confirmation of successful registration with client received");
                         break;
-                    case MSG_REQUEST:
+                    case MSG_REQUEST: {
                         // Request all incoming messages
-                        if(Server.isInDataBase(p.getSenderID(), Client.ClientIDType.ID)){
+                        if (Server.isInDataBase(p.getSenderID(), ClientIDType.ID)) {
                             ArrayList<Message> messages = Server.checkMessages(p.getSenderID());
-                            if(messages.size() > 0) {
+                            if (messages.size() > 0) {
                                 success = sendMSG(messages);
                                 if (!success) {
-                                    // TODO: HANDLE!
                                     System.out.println("Failed to send message or receive confirmation");
                                 }
-                            }
-                            else{
+                            } else {
                                 sendMSG(null);
                             }
-                        }
-                        else {
-                            // TODO: Handle the else
+                        } else {
                             System.out.println("Client is not registered!");
                         }
-                        break;
-                    case MSG:
+                    }
+                    break;
+                    case MSG: {
                         // Forward message
-                        Client.Client.ClientIDType idType;
-                        if(p.getDestID() == null){
-                            idType = Client.ClientIDType.NAME;
+                        ClientIDType idType;
+                        if (p.getDestID() == null) {
+                            idType = ClientIDType.NAME;
+                        } else {
+                            idType = ClientIDType.ID;
                         }
-                        else{
-                            idType = Client.ClientIDType.ID;
-                        }
-                        if(Server.isInDataBase(p.getDestID(), idType)) {
+                        if (Server.isInDataBase(p.getDestID(), idType)) {
                             success = Server.sendMessage(p);
                             if (!success) {
                                 // TODO: Handle the situation in which an attempt was made to send a message to another
                                 //  user through the server but it failed
                                 System.out.println("Failed to send message or receive confirmation");
                             }
-                        }
-                        else{
+                        } else {
                             OOS.writeObject(packetLogger.newOut(new Packet(
                                     UNKNOWN_USER_ERROR,
                                     null,
@@ -119,20 +114,20 @@ public class ClientHandler implements Runnable {
                                     null,
                                     null,
                                     null
-                                    )));
+                            )));
                             Packet packetIn = packetLogger.newIn(OIS.readObject());
-                            if(packetIn.getType() != RECEIVED_CONFIRM){
+                            if (packetIn.getType() != RECEIVED_CONFIRM) {
                                 // Handle!
                             }
                             System.out.println("Client defined by destination is not registered!");
                         }
-                        break;
+                    }
+                    break;
                     case PUBLIC_KEY_REQUEST:
                         // Since the public key is being shared here one does not have to encrypt this public key with
                         // the public key of the recipient
                         if (p.getDestID() != null) {
                             String pKey = Server.getPublicKeyByID(p.getDestID());
-                            // TODO: failure to send
                             success = sendToClient(new Packet(
                                     PacketType.PUBLIC_KEY_REQUEST,
                                     p.getSenderID(),
@@ -143,11 +138,9 @@ public class ClientHandler implements Runnable {
                                     null,
                                     pKey
                             ));
-
                         }
                         else if(p.hasName()){
                             String pKey = Server.getPublicKeyByName(p.getFullName());
-                            // TODO: failure to send
                             success = sendToClient(new Packet(
                                     PacketType.PUBLIC_KEY_REQUEST,
                                     p.getSenderID(),

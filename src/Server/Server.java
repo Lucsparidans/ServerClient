@@ -31,7 +31,6 @@ public class Server {
 
     public static void main(String[] args) {
         // TODO: close socket when client disconnects
-
         System.out.println(INET_ADDRESS);
         try {
             ServerSocket ss = new ServerSocket(PORT,BACK_LOG,INET_ADDRESS);
