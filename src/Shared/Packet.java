@@ -14,7 +14,8 @@ public class Packet implements Serializable {
         RECEIVED_CONFIRM,
         NO_MSGs,
         UNKNOWN_USER_ERROR,
-        ERROR
+        ERROR,
+        CLOSE
     }
     public enum DataFormat{
         STRING,
