@@ -13,7 +13,6 @@ public class SynchronisationTest {
     public static void main(String[] args) {
         fillDataStructure();
         printDataStructure();
-        // TODO: Create two threads that try to access the same data-structure at the same time.
         Thread t1 = new Thread(new Accessor(),"Thread-1");
         Thread t2 = new Thread(new Accessor(), "Thread-2");
         t1.start();

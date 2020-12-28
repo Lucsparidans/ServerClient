@@ -94,7 +94,14 @@ public class ClientHandler implements Runnable {
                         break;
                     case MSG:
                         // Forward message
-                        if(Server.isInDataBase(p.getDestID(), Client.ClientIDType.ID)) {
+                        Client.Client.ClientIDType idType;
+                        if(p.getDestID() == null){
+                            idType = Client.ClientIDType.NAME;
+                        }
+                        else{
+                            idType = Client.ClientIDType.ID;
+                        }
+                        if(Server.isInDataBase(p.getDestID(), idType)) {
                             success = Server.sendMessage(p);
                             if (!success) {
                                 // TODO: Handle the situation in which an attempt was made to send a message to another
@@ -103,7 +110,20 @@ public class ClientHandler implements Runnable {
                             }
                         }
                         else{
-                            // TODO: Fix this situation!
+                            OOS.writeObject(packetLogger.newOut(new Packet(
+                                    UNKNOWN_USER_ERROR,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null
+                                    )));
+                            Packet packetIn = packetLogger.newIn(OIS.readObject());
+                            if(packetIn.getType() != RECEIVED_CONFIRM){
+                                // Handle!
+                            }
                             System.out.println("Client defined by destination is not registered!");
                         }
                         break;

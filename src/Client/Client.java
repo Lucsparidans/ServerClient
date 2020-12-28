@@ -219,8 +219,8 @@ public class Client implements Runnable{
                 }
                 else{
                     String[] name = action.getToID().split(",", 2);
-                    String firstName = name[0].replace(" ", "");
-                    String lastName = name[1].replace(" ", "");
+                    String firstName = name[1].trim();
+                    String lastName = name[0].trim();
                     p = new Packet(PacketType.MSG,
                             id,
                             null,
@@ -231,7 +231,7 @@ public class Client implements Runnable{
                             null);
                 }
                 boolean succes = sendEncryptedMessage(p);
-                // TODO: Handle failure
+                // Handle !success
             }
         }
     }
@@ -244,7 +244,12 @@ public class Client implements Runnable{
         try {
             objectOutputStream.writeObject(pktLog.newOut(packet));
             Packet p = pktLog.newIn(objectInputStream.readObject());
-            return p.getType() == PacketType.RECEIVED_CONFIRM;
+            if(p.getType() == PacketType.RECEIVED_CONFIRM){
+                return true;
+            }
+            else if(p.getType() == PacketType.UNKNOWN_USER_ERROR){
+                System.out.println("Attempted to send message to user unknown to the database!");
+            }
         }catch(IOException | ClassNotFoundException e){
             e.printStackTrace();
         }
@@ -300,7 +305,7 @@ public class Client implements Runnable{
                         break;
                 }
             }
-            else System.out.println("No messages!");
+            else System.out.println("No messages!"); // TODO: Change this
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
