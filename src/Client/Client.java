@@ -141,6 +141,7 @@ public class Client implements Runnable{
         }
 
         System.out.println("duration over");
+        socketClose();
         System.out.println(pktLog.getLoggedSequence());
     }
 
@@ -254,6 +255,20 @@ public class Client implements Runnable{
             e.printStackTrace();
         }
         return false;
+    }
+
+    private void socketClose(){
+        try {
+            objectOutputStream.writeObject(pktLog.newOut(new Packet(PacketType.CLOSE, null, null, null, null, null , null, null
+            )));
+            Packet p = pktLog.newIn(objectInputStream.readObject());
+            if(p.getType()==PacketType.RECEIVED_CONFIRM){
+                s.close();
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+
     }
     private void checkMessages(){
         // TODO: Send a packet to confirm receiving a packet for all incoming packets
