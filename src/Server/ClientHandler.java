@@ -21,6 +21,8 @@ import static Shared.Packet.PacketType.*;
  */
 public class ClientHandler implements Runnable {
 
+    private static final boolean DEBUG = true;
+
     private final Socket clientSocket;
     private ObjectInputStream OIS;
     private ObjectOutputStream OOS;
@@ -41,9 +43,9 @@ public class ClientHandler implements Runnable {
      */
     @Override
     public void run() {
-        System.out.println("Started client handler");
+        LogMessage("Started client handler");
         try {
-            System.out.println("Registering on server");
+            LogMessage("Registering on server");
             register();
         } catch (IOException | ClassNotFoundException ioException) {
             ioException.printStackTrace();
@@ -61,7 +63,7 @@ public class ClientHandler implements Runnable {
 
                 switch (type) {
                     case SYN_ACK:
-                        System.out.println("Confirmation of successful registration with client received");
+                        LogMessage("Confirmation of successful registration with client received");
                         break;
                     case MSG_REQUEST: {
                         // Request all incoming messages
@@ -70,13 +72,13 @@ public class ClientHandler implements Runnable {
                             if (messages.size() > 0) {
                                 success = sendMSG(messages);
                                 if (!success) {
-                                    System.out.println("Failed to send message or receive confirmation");
+                                    LogMessage("Failed to send message or receive confirmation");
                                 }
                             } else {
                                 sendMSG(null);
                             }
                         } else {
-                            System.out.println("Client is not registered!");
+                            LogMessage("Client is not registered!");
                         }
                     }
                     break;
@@ -96,12 +98,13 @@ public class ClientHandler implements Runnable {
                             if (!success) {
                                 // TODO: Handle the situation in which an attempt was made to send a message to another
                                 //  user through the server but it failed
-                                System.out.println("Failed to send message or receive confirmation");
+                                LogMessage("Failed to send message or receive confirmation");
+                            }else{
+                                sendToClient(RECEIVED_CONFIRM); // Acknowledge the message was successfully sent to another user
                             }
                         } else {
-                            System.out.printf("User: %s is not in database\n",idString);
+                            LogMessage("User: %s is not in database",idString);
                             sendToClient(UNKNOWN_USER_ERROR);
-                            System.out.println("Client defined by destination is not registered!");
                         }
                     }
                     break;
@@ -138,12 +141,13 @@ public class ClientHandler implements Runnable {
                         }
                         break;
                     case CLOSE:
-                        System.out.println("Close requested!");
+                        LogMessage("Close requested!");
                         active = false;
                         break;
                     default:
                         // TODO: Implement some error resolving method for this situation
                         //  (Also check whether it will every get here)
+                        LogMessage("Something went wrong! Unhandled PacketType was received in ClientHandler");
                         break;
                 }
 
@@ -216,7 +220,7 @@ public class ClientHandler implements Runnable {
                     null,
                     null,
                     null)));
-            if(packetType != RECEIVED_CONFIRM) {
+            if(packetType != RECEIVED_CONFIRM && packetType != UNKNOWN_USER_ERROR) {
                 Packet packetIn = packetLogger.newIn(OIS.readObject());
                 if (packetIn.getType() == RECEIVED_CONFIRM) {
                     return true;
@@ -307,4 +311,12 @@ public class ClientHandler implements Runnable {
         return this.active;
     }
 
+    private void LogMessage(String message, Object... args){
+        if(DEBUG)
+        System.out.printf(Thread.currentThread().getName() + ": "+ message + "\n",args);
+    }
+    private void LogMessage(String message){
+        if(DEBUG)
+        System.out.println(Thread.currentThread().getName() + ": " + message);
+    }
 }

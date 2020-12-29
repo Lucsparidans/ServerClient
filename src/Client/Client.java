@@ -1,6 +1,7 @@
 package Client;
 
 import Server.Message;
+import Shared.FileLogger;
 import Shared.Packet;
 import Shared.Packet.PacketType;
 import Shared.PacketLogger;
@@ -132,7 +133,7 @@ public class Client implements Runnable{
 
     @Override
     public void run() {
-        System.out.println("Started client");
+        System.out.printf("Started client on thread: %s\n",Thread.currentThread().getName());
         long endTime;
         if(DEBUG){
             endTime = System.currentTimeMillis() + Long.parseLong(this.duration);
@@ -145,11 +146,11 @@ public class Client implements Runnable{
             executeAction();
         }
 
-        System.out.println("duration over");
+        System.out.printf("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
         socketClose();
+
         // Print all logged packets
-        //System.out.println(pktLog.getLoggedSequence());
-        System.out.printf("Client on: %s closing down!",Thread.currentThread().getName());
+        FileLogger.writeLogToFile(pktLog.getLoggedSequence());
     }
 
     /**
@@ -250,11 +251,17 @@ public class Client implements Runnable{
         try {
             objectOutputStream.writeObject(pktLog.newOut(packet));
             Packet p = pktLog.newIn(objectInputStream.readObject());
-            if(p.getType() == PacketType.RECEIVED_CONFIRM){
-                return true;
+            if(p.getType() != PacketType.RECEIVED_CONFIRM){
+                // Handle!
+
             }
-            else if(p.getType() == PacketType.UNKNOWN_USER_ERROR){
+            p = pktLog.newIn(objectInputStream.readObject());
+            if(p.getType() == PacketType.UNKNOWN_USER_ERROR){
                 System.out.println("Attempted to send message to user unknown to the database!");
+                return false;
+            }
+            else{
+                return true;
             }
         }catch(IOException | ClassNotFoundException e){
             e.printStackTrace();
@@ -329,7 +336,6 @@ public class Client implements Runnable{
                     }
                 }
             }
-            else System.out.println("No messages!"); // TODO: Change this
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }

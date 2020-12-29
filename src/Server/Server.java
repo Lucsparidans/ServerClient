@@ -37,7 +37,6 @@ public class Server {
                 // TODO: create method to shutdown (all) threads
                 if(SESSIONS.size() < CLIENT_LIMIT){
                     Socket socket = ss.accept();
-                    System.out.println("New socket");
                     ClientHandler clientHandler = new ClientHandler(socket);
                     SESSIONS.add(clientHandler);
                     Thread thread = new Thread(clientHandler);
