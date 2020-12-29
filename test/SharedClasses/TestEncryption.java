@@ -1,22 +1,17 @@
-package Server;
-
-import org.bouncycastle.asn1.*;
-import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
+package SharedClasses;
 
 import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
-import java.security.*;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.RSAPrivateCrtKeySpec;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
+
+import static Server.Encryption.decrypt;
+import static Server.Encryption.encrypt;
 
 public class TestEncryption {
-
     public static void main(String[] args) throws NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InvalidKeySpecException, IOException {
         String plainText = "Fuck you";
 
@@ -30,46 +25,5 @@ public class TestEncryption {
         String pText = decrypt(stringPrvKey, cText);
 
         System.out.println(pText);
-
-
     }
-
-    public static String encrypt(String stringPubKey, String text) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-
-        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(Base64.getDecoder().decode(stringPubKey.getBytes()));
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        PublicKey publicKey = keyFactory.generatePublic(keySpec);
-
-        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-
-        String encryptedString = Base64.getEncoder().encodeToString(cipher.doFinal(text.getBytes()));
-
-        return encryptedString;
-    }
-
-    public static String decrypt(String stringPrvKey, String text) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException, IOException {
-
-        byte[] data = Base64.getDecoder().decode(stringPrvKey.getBytes());
-
-        java.security.Security.addProvider(
-                new org.bouncycastle.jce.provider.BouncyCastleProvider()
-        );
-
-        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(data);
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        PrivateKey privateKey = keyFactory.generatePrivate(keySpec);
-
-        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        cipher.init(Cipher.DECRYPT_MODE, privateKey);
-
-        byte [] data2 = Base64.getDecoder().decode(text.getBytes());
-
-        byte[] ciphertext = cipher.doFinal(data2);
-
-        String decryptedString = new String(ciphertext);
-
-        return decryptedString;
-    }
-
 }

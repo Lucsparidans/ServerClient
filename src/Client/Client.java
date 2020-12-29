@@ -1,5 +1,6 @@
 package Client;
 
+import Server.Encryption;
 import Server.Message;
 import Shared.FileLogger;
 import Shared.Packet;
@@ -15,6 +16,7 @@ import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class Client implements Runnable{
 
@@ -227,8 +229,8 @@ public class Client implements Runnable{
                 }
                 else{
                     String[] name = action.getToID().split(",", 2);
-                    String firstName = name[1].trim();
-                    String lastName = name[0].trim();
+                    String firstName = name[1].trim().toUpperCase();
+                    String lastName = name[0].trim().toUpperCase();
                     p = new Packet(PacketType.MSG,
                             id,
                             null,
@@ -245,7 +247,33 @@ public class Client implements Runnable{
 
     private boolean sendEncryptedMessage(Packet packet){
         // TODO: Request key
+        sendPacket(new Packet(PacketType.PUBLIC_KEY_REQUEST,
+                null,
+                packet.getDestID(),
+                null,
+                null,
+                null,
+                null));
+        Packet pKeyPacket = receivePacket();
+        String pKey = Objects.requireNonNull(pKeyPacket).getPublicKey();
         // TODO: Encrypt
+        Object o = packet.getData();
+        if(o instanceof String){
+            packet.setData(Encryption.encrypt(pKey,(String)o));
+        }else if(o instanceof Message){
+            Message msg = (Message)o;
+            msg.setMessage(Encryption.encrypt(pKey,msg.getMessage()));
+            packet.setData(msg);
+        }else if(o instanceof ArrayList){
+            ArrayList<Message> encryptedMessages = new ArrayList<>();
+            for (Object obj :
+                    (ArrayList<?>) o){
+                Message msg = (Message)obj;
+                msg.setMessage(Encryption.encrypt(pKey,msg.getMessage()));
+                encryptedMessages.add(msg);
+            }
+            packet.setData(encryptedMessages);
+        }
         // TODO: Send (Using the retries)
         // TODO: Receive and verify confirmation from server
         try {
@@ -253,7 +281,6 @@ public class Client implements Runnable{
             Packet p = pktLog.newIn(objectInputStream.readObject());
             if(p.getType() != PacketType.RECEIVED_CONFIRM){
                 // Handle!
-
             }
             p = pktLog.newIn(objectInputStream.readObject());
             if(p.getType() == PacketType.UNKNOWN_USER_ERROR){
@@ -340,6 +367,25 @@ public class Client implements Runnable{
             e.printStackTrace();
         }
     }
+    // region PacketIO
+    private Packet receivePacket(){
+        try {
+            return pktLog.newIn(objectInputStream.readObject());
+        }catch (IOException | ClassNotFoundException e){
+            e.printStackTrace();
+        }
+        return null;
+    }
+    private void sendPacket(Packet p){
+        try {
+            objectOutputStream.writeObject(pktLog.newOut(p));
+            Packet pIn = pktLog.newIn(objectInputStream.readObject());
+            assert pIn.getType() == PacketType.RECEIVED_CONFIRM;
+        }catch(IOException | ClassNotFoundException e){
+            e.printStackTrace();
+        }
+    }
+    // endregion
 }
 
 // region old
