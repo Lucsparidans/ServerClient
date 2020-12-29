@@ -2,7 +2,6 @@ package Client;
 
 import Server.Message;
 import Shared.Packet;
-import Shared.Packet.DataFormat;
 import Shared.Packet.PacketType;
 import Shared.PacketLogger;
 import org.json.simple.JSONArray;
@@ -17,6 +16,8 @@ import java.net.Socket;
 import java.util.ArrayList;
 
 public class Client implements Runnable{
+
+    private static final boolean DEBUG = true;
 
     private final PacketLogger pktLog;
 
@@ -76,9 +77,8 @@ public class Client implements Runnable{
                                 id,
                                 null,
                                 null,
-                                null,
-                                name.split(" ")[0],
-                                name.split(" ")[1],
+                                name.split(" ")[0].toUpperCase(),
+                                name.split(" ")[1].toUpperCase(),
                                 publicKey)));
                 Packet p = pktLog.newIn(objectInputStream.readObject());
                 if (p != null) {
@@ -90,9 +90,8 @@ public class Client implements Runnable{
                                         id,
                                         null,
                                         null,
-                                        null,
-                                        name.split(" ")[0],
-                                        name.split(" ")[1],
+                                        name.split(" ")[0].toUpperCase(),
+                                        name.split(" ")[1].toUpperCase(),
                                         publicKey
                                 )));
                     }
@@ -134,7 +133,13 @@ public class Client implements Runnable{
     @Override
     public void run() {
         System.out.println("Started client");
-        long endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 1000L;
+        long endTime;
+        if(DEBUG){
+            endTime = System.currentTimeMillis() + Long.parseLong(this.duration);
+        }
+        else{
+            endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 1000L;
+        }
         while(System.currentTimeMillis() < endTime){
             checkMessages();
             executeAction();
@@ -142,7 +147,9 @@ public class Client implements Runnable{
 
         System.out.println("duration over");
         socketClose();
-        System.out.println(pktLog.getLoggedSequence());
+        // Print all logged packets
+        //System.out.println(pktLog.getLoggedSequence());
+        System.out.printf("Client on: %s closing down!",Thread.currentThread().getName());
     }
 
     /**
@@ -212,8 +219,7 @@ public class Client implements Runnable{
                     p = new Packet(PacketType.MSG,
                             id,
                             action.getToID(),
-                            action.getMessage(),
-                            DataFormat.MESSAGE,
+                            action.getMessageAsString(),
                             null,
                             null,
                             null);
@@ -225,8 +231,7 @@ public class Client implements Runnable{
                     p = new Packet(PacketType.MSG,
                             id,
                             null,
-                            action.getMessage(),
-                            DataFormat.MESSAGE,
+                            action.getMessageAsString(),
                             firstName,
                             lastName,
                             null);
@@ -264,12 +269,13 @@ public class Client implements Runnable{
                             null,
                             null,
                             null,
-                            null,
                             null ,
                             null,
                             null)));
             Packet p = pktLog.newIn(objectInputStream.readObject());
             if(p.getType()==PacketType.RECEIVED_CONFIRM){
+                objectOutputStream.close();
+                objectInputStream.close();
                 s.close();
             }
         } catch (IOException | ClassNotFoundException e) {
@@ -284,7 +290,6 @@ public class Client implements Runnable{
             objectOutputStream.writeObject(pktLog.newOut(
                     new Packet(PacketType.MSG_REQUEST,
                             id,
-                            null,
                             null,
                             null,
                             null,
@@ -305,26 +310,23 @@ public class Client implements Runnable{
                     null,
                     null,
                     null,
-                    null,
                     null
             )));
             if(p.getType() != PacketType.NO_MSGs) {
-                DataFormat dataFormat = p.getDataFormat();
-                switch (dataFormat) {
-                    case STRING:
-                        System.out.printf("Message: %s\n", p.getData());
-                        break;
-                    case MESSAGE:
-                        System.out.printf("Message: %s\n", ((Message) p.getData()).getMessage());
-                        break;
-                    case ARRAYLIST_MESSAGES:
-                        ArrayList<?> messages = (ArrayList<?>) p.getData();
-                        for (Object message : messages) {
-                            Message m = (Message) message;
-                            // TODO: Decrypt the data
-                            System.out.printf("Message: %s\n", m.getMessage());
-                        }
-                        break;
+                Object o = p.getData();
+                if(o instanceof String){
+                    System.out.printf("Message: %s\n", o);
+
+                }else if(o instanceof Message){
+                    System.out.printf("Message: %s\n", ((Message) o).getMessage());
+
+                }else if(o instanceof ArrayList){
+                    ArrayList<?> messages = (ArrayList<?>) o;
+                    for (Object message : messages) {
+                        Message m = (Message) message;
+                        // TODO: Decrypt the data
+                        System.out.printf("Message: %s\n", m.getMessage());
+                    }
                 }
             }
             else System.out.println("No messages!"); // TODO: Change this

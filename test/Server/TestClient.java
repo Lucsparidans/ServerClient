@@ -20,12 +20,16 @@ public class TestClient {
                     "localhost",
                     "localhost",
                     "Hello from client",
-                    Packet.DataFormat.STRING,
                     "Luc",
                     "Sparidans",
                     "Key"));
             while(running){
-                Packet p = (Packet)OIS.readObject();
+                Object o = OIS.readObject();
+                Packet p = null;
+                if(o instanceof Packet) {
+                    p = (Packet) OIS.readObject();
+                    System.out.println("Object instance of Packet");
+                }
                 if (p != null) {
                     System.out.println(p.getData());
 

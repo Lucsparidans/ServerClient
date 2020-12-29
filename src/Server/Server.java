@@ -2,7 +2,6 @@ package Server;
 
 import Client.Client.ClientIDType;
 import Shared.Packet;
-import Shared.Packet.DataFormat;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -91,28 +90,27 @@ public class Server {
             if (pkt.getDestID() != null) {
                 if (ID_LIST.contains(pkt.getDestID())) {
                     // ID is registered
-                    DataFormat dataFormat = pkt.getDataFormat();
-                    switch (dataFormat) {
-                        case STRING:
+                    Object data = pkt.getData();
+                    if(data instanceof String){
+                        MSG_BY_ID.get(pkt.getDestID()).add(new Message(
+                                pkt.getSenderID(),
+                                pkt.getDestID(),
+                                (String) pkt.getData()));
+                    }
+                    else if(data instanceof Message){
+                        MSG_BY_ID.get(pkt.getDestID()).add(new Message(
+                                pkt.getSenderID(),
+                                pkt.getDestID(),
+                                ((Message) pkt.getData()).getMessage()));
+                    }
+                    else if(data instanceof ArrayList){
+                        ArrayList<?> messages = (ArrayList<?>) pkt.getData();
+                        for (Object message : messages) {
                             MSG_BY_ID.get(pkt.getDestID()).add(new Message(
                                     pkt.getSenderID(),
                                     pkt.getDestID(),
-                                    (String) pkt.getData()));
-                            break;
-                        case MESSAGE:
-                            MSG_BY_ID.get(pkt.getDestID()).add(new Message(
-                                    pkt.getSenderID(),
-                                    pkt.getDestID(),
-                                    ((Message) pkt.getData()).getMessage()));
-                            break;
-                        case ARRAYLIST_MESSAGES:
-                            ArrayList<?> messages = (ArrayList<?>) pkt.getData();
-                            for (Object message : messages) {
-                                MSG_BY_ID.get(pkt.getDestID()).add(new Message(
-                                        pkt.getSenderID(),
-                                        pkt.getDestID(),
-                                        ((Message) message).getMessage()));
-                            }
+                                    ((Message) message).getMessage()));
+                        }
                     }
                     // Message successfully sent
                     return true;
@@ -126,28 +124,25 @@ public class Server {
                 String ID = NAME_TO_ID.get(fullName);
                 if (ID != null) {
                     // ID was found in the database
-                    DataFormat dataFormat = pkt.getDataFormat();
-                    switch (dataFormat) {
-                        case STRING:
+                    Object data = pkt.getData();
+                    if(data instanceof String){
+                        MSG_BY_ID.get(ID).add(new Message(
+                                pkt.getSenderID(),
+                                ID,
+                                (String) data));
+                    }else if(data instanceof Message){
+                        MSG_BY_ID.get(ID).add(new Message(
+                                pkt.getSenderID(),
+                                ID,
+                                ((Message) data).getMessage()));
+                    }else if(data instanceof ArrayList) {
+                        ArrayList<?> messages = (ArrayList<?>) data;
+                        for (Object message : messages) {
                             MSG_BY_ID.get(ID).add(new Message(
                                     pkt.getSenderID(),
                                     ID,
-                                    (String) pkt.getData()));
-                            break;
-                        case MESSAGE:
-                            MSG_BY_ID.get(ID).add(new Message(
-                                    pkt.getSenderID(),
-                                    ID,
-                                    ((Message) pkt.getData()).getMessage()));
-                            break;
-                        case ARRAYLIST_MESSAGES:
-                            ArrayList<?> messages = (ArrayList<?>) pkt.getData();
-                            for (Object message : messages) {
-                                MSG_BY_ID.get(ID).add(new Message(
-                                        pkt.getSenderID(),
-                                        ID,
-                                        ((Message) message).getMessage()));
-                            }
+                                    ((Message) message).getMessage()));
+                        }
                     }
                     // Message(s) successfully sent
                     return true;

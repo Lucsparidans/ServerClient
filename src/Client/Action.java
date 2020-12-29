@@ -15,7 +15,7 @@ public class Action {
         return toID;
     }
 
-    public String getMessage() {
+    public String getMessageAsString() {
         return message;
     }
 

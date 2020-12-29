@@ -2,7 +2,6 @@ package Server;
 
 import Client.Client.ClientIDType;
 import Shared.Packet;
-import Shared.Packet.DataFormat;
 import Shared.Packet.PacketType;
 import Shared.PacketLogger;
 
@@ -52,21 +51,13 @@ public class ClientHandler implements Runnable {
         while (active) {
             try {
                 // TODO: For each packet received send confirmation to client
-                Packet p = this.packetLogger.newIn(OIS.readObject());
+                Packet p = receiveFromClient();
                 // Consider situation in which p = null?
                 boolean success;
+                assert p != null;
                 PacketType type = p.getType();
                 // Send confirmation of retrieval of the latest packet
-                OOS.writeObject(packetLogger.newOut(new Packet(
-                        RECEIVED_CONFIRM,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null
-                )));
+                sendToClient(RECEIVED_CONFIRM);
 
                 switch (type) {
                     case SYN_ACK:
@@ -92,12 +83,15 @@ public class ClientHandler implements Runnable {
                     case MSG: {
                         // Forward message
                         ClientIDType idType;
+                        String idString;
                         if (p.getDestID() == null) {
                             idType = ClientIDType.NAME;
+                            idString = p.getFullName();
                         } else {
                             idType = ClientIDType.ID;
+                            idString = p.getDestID();
                         }
-                        if (Server.isInDataBase(p.getDestID(), idType)) {
+                        if (Server.isInDataBase(idString, idType)) {
                             success = Server.sendMessage(p);
                             if (!success) {
                                 // TODO: Handle the situation in which an attempt was made to send a message to another
@@ -105,20 +99,8 @@ public class ClientHandler implements Runnable {
                                 System.out.println("Failed to send message or receive confirmation");
                             }
                         } else {
-                            OOS.writeObject(packetLogger.newOut(new Packet(
-                                    UNKNOWN_USER_ERROR,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null
-                            )));
-                            Packet packetIn = packetLogger.newIn(OIS.readObject());
-                            if (packetIn.getType() != RECEIVED_CONFIRM) {
-                                // Handle!
-                            }
+                            System.out.printf("User: %s is not in database\n",idString);
+                            sendToClient(UNKNOWN_USER_ERROR);
                             System.out.println("Client defined by destination is not registered!");
                         }
                     }
@@ -135,7 +117,6 @@ public class ClientHandler implements Runnable {
                                     null,
                                     null,
                                     null,
-                                    null,
                                     pKey
                             ));
                         }
@@ -148,21 +129,17 @@ public class ClientHandler implements Runnable {
                                     null,
                                     null,
                                     null,
-                                    null,
                                     pKey
                             ));
                         }
                         else{
                             // Send an error packet if the destination is undefined
-                            OOS.writeObject(packetLogger.newOut(new Packet(ERROR,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null)));
+                            sendToClient(ERROR);
                         }
+                        break;
+                    case CLOSE:
+                        System.out.println("Close requested!");
+                        active = false;
                         break;
                     default:
                         // TODO: Implement some error resolving method for this situation
@@ -197,7 +174,6 @@ public class ClientHandler implements Runnable {
                                 null,
                                 null,
                                 messages,
-                                DataFormat.ARRAYLIST_MESSAGES,
                                 null,
                                 null,
                                 null
@@ -218,7 +194,6 @@ public class ClientHandler implements Runnable {
                                 null,
                                 null,
                                 null,
-                                null,
                                 null
                         )
                 ));
@@ -231,9 +206,33 @@ public class ClientHandler implements Runnable {
         return false;
     }
 
-    private boolean sendToClient(Packet p){
+    private boolean sendToClient(PacketType packetType){
         try{
-            OOS.writeObject(packetLogger.newOut(p));
+            OOS.writeObject(packetLogger.newOut(new Packet(
+                    packetType,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null)));
+            if(packetType != RECEIVED_CONFIRM) {
+                Packet packetIn = packetLogger.newIn(OIS.readObject());
+                if (packetIn.getType() == RECEIVED_CONFIRM) {
+                    return true;
+                }
+            }
+            else{
+                return true;
+            }
+        }catch(IOException | ClassNotFoundException e){
+            e.printStackTrace();
+        }
+        return false;
+    }
+    private boolean sendToClient(Packet packet){
+        try{
+            OOS.writeObject(packetLogger.newOut(packet));
             Packet packetIn = packetLogger.newIn(OIS.readObject());
             if(packetIn.getType() == RECEIVED_CONFIRM){
                 return true;
@@ -244,6 +243,15 @@ public class ClientHandler implements Runnable {
         return false;
     }
 
+    private Packet receiveFromClient() {
+        try {
+            return packetLogger.newIn(OIS.readObject());
+        }catch(IOException | ClassNotFoundException e){
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     /**
      * This method takes care of the registration with the client
      *
@@ -251,7 +259,8 @@ public class ClientHandler implements Runnable {
      * @throws ClassNotFoundException Possible exception
      */
     private void register() throws IOException, ClassNotFoundException {
-        Packet p = this.packetLogger.newIn(OIS.readObject());
+        Packet p = receiveFromClient();
+        assert p != null; // TODO: Find an alternative for this
         if (p.getType() == SYN) {
             boolean req = Server.register(p); // You need the public static access here
             if (req) {
@@ -261,7 +270,6 @@ public class ClientHandler implements Runnable {
                                 ACK,
                                 null,
                                 p.getSenderID(),
-                                null,
                                 null,
                                 null,
                                 null,

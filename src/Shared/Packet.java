@@ -17,16 +17,10 @@ public class Packet implements Serializable {
         ERROR,
         CLOSE
     }
-    public enum DataFormat{
-        STRING,
-        MESSAGE,
-        ARRAYLIST_MESSAGES
-    }
 
     // region Variables
     private static final long serialVersionUID = 1L;
     private PacketType type;
-    private final DataFormat dataFormat;
     private String senderID;
     private String destID;
     private Object data;
@@ -36,9 +30,8 @@ public class Packet implements Serializable {
 
     // endregion
 
-    public Packet(PacketType type, String senderID, String destID, Object data, DataFormat dataFormat,String firstName, String lastName, String publicKey) {
+    public Packet(PacketType type, String senderID, String destID, Object data,String firstName, String lastName, String publicKey) {
         this.type = type;
-        this.dataFormat = dataFormat;
         this.senderID = senderID;
         this.destID = destID;
         this.data = data;
@@ -89,10 +82,6 @@ public class Packet implements Serializable {
 
     public Object getData() {
         return data;
-    }
-
-    public DataFormat getDataFormat(){
-        return dataFormat;
     }
 
     public void setData(String data) {

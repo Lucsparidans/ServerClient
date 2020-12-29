@@ -22,8 +22,8 @@ public class TestServer {
             new Thread(ch).start();
 
             running = true;
-            ObjectOutputStream OOS = new ObjectOutputStream(sock.getOutputStream());
             ObjectInputStream OIS = new ObjectInputStream(sock.getInputStream());
+            ObjectOutputStream OOS = new ObjectOutputStream(sock.getOutputStream());
 
             while(running){
                 Packet p = (Packet)OIS.readObject();
@@ -33,7 +33,6 @@ public class TestServer {
                             "localhost",
                             "localhost",
                             "Package successfully received!",
-                            Packet.DataFormat.STRING,
                             "Luc",
                             "Sparidans",
                             "Key"
