@@ -251,10 +251,21 @@ public class Client implements Runnable{
                 null,
                 packet.getDestID(),
                 null,
-                null,
-                null,
+                packet.getFirstName(),
+                packet.getLastName(),
                 null));
         Packet pKeyPacket = receivePacket();
+        try {
+            objectOutputStream.writeObject(pktLog.newOut(new Packet(PacketType.RECEIVED_CONFIRM,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null)));
+        }catch (IOException e){
+            e.printStackTrace();
+        }
         String pKey = Objects.requireNonNull(pKeyPacket).getPublicKey();
         // TODO: Encrypt
         Object o = packet.getData();

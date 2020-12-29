@@ -115,7 +115,7 @@ public class ClientHandler implements Runnable {
                             String pKey = Server.getPublicKeyByID(p.getDestID());
                             success = sendToClient(new Packet(
                                     PacketType.PUBLIC_KEY_REQUEST,
-                                    p.getSenderID(),
+                                    null,
                                     p.getDestID(),
                                     null,
                                     null,
@@ -125,10 +125,11 @@ public class ClientHandler implements Runnable {
                         }
                         else if(p.hasName()){
                             String pKey = Server.getPublicKeyByName(p.getFullName());
+                            String destination = Server.nameToID(p.getFullName());
                             success = sendToClient(new Packet(
                                     PacketType.PUBLIC_KEY_REQUEST,
-                                    p.getSenderID(),
-                                    p.getDestID(),
+                                    null,
+                                    destination,
                                     null,
                                     null,
                                     null,
