@@ -9,7 +9,6 @@ import java.util.Date;
 public abstract class FileLogger {
     private static final String baseDir = "logs/";
     public synchronized static void writeLogToFile(String log){
-        System.out.println("Writing to file");
         try {
             String newFileName = baseDir + getName();
             File f = new File(newFileName);
@@ -20,7 +19,6 @@ public abstract class FileLogger {
             FileWriter fileWriter = new FileWriter(f);
             fileWriter.write(log);
             fileWriter.close();
-            System.out.println("Success!!!");
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }

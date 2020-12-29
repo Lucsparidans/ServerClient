@@ -82,12 +82,14 @@ public class Server {
 
     public static ArrayList<Message> checkMessages(String id){
         synchronized (LOCK) {
-            ArrayList<Message> messages = MSG_BY_ID.get(id);
-            MSG_BY_ID.get(id).clear();
-            if(messages == null){
-                System.out.println("Hey");
+            if(MSG_BY_ID.get(id).size() > 0) {
+                ArrayList<Message> m = MSG_BY_ID.get(id);
+                ArrayList<Message> messages = new ArrayList<>();
+                m.forEach((message -> messages.add(message.clone())));
+                MSG_BY_ID.get(id).clear();
+                return messages;
             }
-            return messages;
+            return MSG_BY_ID.get(id);
         }
     }
 

@@ -44,6 +44,20 @@ public class PacketLogger {
         return sb.toString();
     }
 
+    public String getLoggedIncoming(){
+        StringBuilder sb = new StringBuilder();
+        sb.append("Packet sequence:\n");
+        incoming.forEach(p->sb.append(p.toString()));
+        return sb.toString();
+    }
+    public String getLoggedOutgoing(){
+        StringBuilder sb = new StringBuilder();
+        sb.append("Packet sequence:\n");
+        outgoing.forEach(p->sb.append(p.toString()));
+        return sb.toString();
+    }
+
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

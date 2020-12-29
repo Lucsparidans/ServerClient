@@ -141,16 +141,16 @@ public class Client implements Runnable{
             endTime = System.currentTimeMillis() + Long.parseLong(this.duration);
         }
         else{
-            endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 1000L;
+            endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 10L;
         }
         while(System.currentTimeMillis() < endTime){
             checkMessages();
             executeAction();
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+//            try {
+//                Thread.sleep(1000);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
         }
 
         System.out.printf("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
@@ -158,6 +158,7 @@ public class Client implements Runnable{
 
         // Print all logged packets
         FileLogger.writeLogToFile(pktLog.getLoggedSequence());
+        FileLogger.writeLogToFile(pktLog.getLoggedIncoming());
     }
 
     /**
@@ -372,17 +373,17 @@ public class Client implements Runnable{
             if(p.getType() != PacketType.NO_MSGs) {
                 Object o = p.getData();
                 if(o instanceof String){
-                    System.out.printf("Message: %s\n", o);
+                    System.out.printf("Message: %s\n", Encryption.decrypt(this.privateKey,(String)o));
 
                 }else if(o instanceof Message){
-                    System.out.printf("Message: %s\n", ((Message) o).getMessage());
+                    System.out.printf("Message: %s\n", Encryption.decrypt(this.privateKey,((Message) o).getMessage()));
 
                 }else if(o instanceof ArrayList){
                     ArrayList<?> messages = (ArrayList<?>) o;
                     for (Object message : messages) {
                         Message m = (Message) message;
                         // TODO: Decrypt the data
-                        System.out.printf("Message: %s\n", m.getMessage());
+                        System.out.printf("Message: %s\n", Encryption.decrypt(this.privateKey,m.getMessage()));
                     }
                 }
             }

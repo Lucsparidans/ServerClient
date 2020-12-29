@@ -37,4 +37,8 @@ public class Message implements Serializable {
     public void setReceiver(String receiver) {
         this.receiver = receiver;
     }
+
+    public Message clone()  {
+        return new Message(sender,receiver,message);
+    }
 }
