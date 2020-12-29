@@ -146,11 +146,6 @@ public class Client implements Runnable{
         while(System.currentTimeMillis() < endTime){
             checkMessages();
             executeAction();
-//            try {
-//                Thread.sleep(1000);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
         }
 
         System.out.printf("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
@@ -411,60 +406,3 @@ public class Client implements Runnable{
     }
     // endregion
 }
-
-// region old
-// EXECUTE ACTIONS
-//        for (Object action : this.actions) {
-//            if (actionType.equals("SEND")) {
-//                if (!toId.contains(",")) {
-//                    int tries = 0;
-//                    boolean sent = false;
-//                    while(tries < Integer.parseInt(retries) && !sent){
-//                        objectOutputStream.writeObject(pktLog.newOut(
-//                                new Packet(PacketType.MSG,
-//                                        id,
-//                                        toId,
-//                                        m,
-//                                        DataFormat.STRING,
-//                                        null,
-//                                        null,
-//                                        null)));
-//                        Packet p = (Packet)objectInputStream.readObject();
-//                        if(p!=null) {
-//                            if (p.getData().equals("Success message sent"))
-//                                sent = true;
-//                            else {
-//                                tries = +1;
-//                                Thread.sleep(Integer.parseInt(timeout)*1000L);
-//                            }
-//                        }
-//                    }
-//                } else {
-//
-//
-//                    int tries = 0;
-//                    boolean sent = false;
-//                    while(tries < Integer.parseInt(retries) && !sent){
-//                        objectOutputStream.writeObject(pktLog.newOut(
-//                                new Packet(PacketType.MSG,
-//                                        id,
-//                                        null,
-//                                        m,
-//                                        DataFormat.STRING,
-//                                        firstName,
-//                                        lastName,
-//                                        null)));
-//                        Packet p = (Packet)objectInputStream.readObject();
-//                        if(p!=null) {
-//                            if (p.getData().equals("Success message sent"))
-//                                sent = true;
-//                            else {
-//                                tries = +1;
-//                                Thread.sleep(Integer.parseInt(timeout) * 1000L);
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//        }
-// endregion

@@ -57,7 +57,6 @@ public class PacketLogger {
         return sb.toString();
     }
 
-
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
