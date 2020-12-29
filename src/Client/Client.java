@@ -20,7 +20,7 @@ import java.util.Objects;
 
 public class Client implements Runnable{
 
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     private final PacketLogger pktLog;
 
@@ -256,13 +256,20 @@ public class Client implements Runnable{
                 null));
         Packet pKeyPacket = receivePacket();
         try {
-            objectOutputStream.writeObject(pktLog.newOut(new Packet(PacketType.RECEIVED_CONFIRM,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null)));
+            if(pKeyPacket.getType() == PacketType.PUBLIC_KEY_REQUEST) {
+                objectOutputStream.writeObject(pktLog.newOut(new Packet(PacketType.RECEIVED_CONFIRM,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null)));
+            }
+            else{
+                // UNKNOWN USER ERROR
+                System.out.println("Trying to send message to unknown user!");
+                return false;
+            }
         }catch (IOException e){
             e.printStackTrace();
         }

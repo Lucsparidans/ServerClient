@@ -80,10 +80,13 @@ public class Server {
         THREAD_BY_CLIENT.remove(clientHandler);
     }
 
-    public static ArrayList<Message> checkMessages(String id) throws IOException, ClassNotFoundException {
+    public static ArrayList<Message> checkMessages(String id){
         synchronized (LOCK) {
             ArrayList<Message> messages = MSG_BY_ID.get(id);
             MSG_BY_ID.get(id).clear();
+            if(messages == null){
+                System.out.println("Hey");
+            }
             return messages;
         }
     }

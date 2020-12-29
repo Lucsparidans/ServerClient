@@ -51,67 +51,67 @@ public class ClientHandler implements Runnable {
             ioException.printStackTrace();
         }
         while (active) {
-            try {
-                // TODO: For each packet received send confirmation to client
-                Packet p = receiveFromClient();
-                // Consider situation in which p = null?
-                boolean success;
-                assert p != null;
-                PacketType type = p.getType();
-                // Send confirmation of retrieval of the latest packet
-                sendToClient(RECEIVED_CONFIRM);
+            // TODO: For each packet received send confirmation to client
+            Packet p = receiveFromClient();
+            // Consider situation in which p = null?
+            boolean success;
+            assert p != null;
+            PacketType type = p.getType();
+            // Send confirmation of retrieval of the latest packet
+            sendToClient(RECEIVED_CONFIRM);
 
-                switch (type) {
-                    case SYN_ACK:
-                        LogMessage("Confirmation of successful registration with client received");
-                        break;
-                    case MSG_REQUEST: {
-                        // Request all incoming messages
-                        if (Server.isInDataBase(p.getSenderID(), ClientIDType.ID)) {
-                            ArrayList<Message> messages = Server.checkMessages(p.getSenderID());
-                            if (messages.size() > 0) {
-                                success = sendMSG(messages);
-                                if (!success) {
-                                    LogMessage("Failed to send message or receive confirmation");
-                                }
-                            } else {
-                                sendMSG(null);
-                            }
-                        } else {
-                            LogMessage("Client is not registered!");
-                        }
-                    }
+            switch (type) {
+                case SYN_ACK:
+                    LogMessage("Confirmation of successful registration with client received");
                     break;
-                    case MSG: {
-                        // Forward message
-                        ClientIDType idType;
-                        String idString;
-                        if (p.getDestID() == null) {
-                            idType = ClientIDType.NAME;
-                            idString = p.getFullName();
-                        } else {
-                            idType = ClientIDType.ID;
-                            idString = p.getDestID();
-                        }
-                        if (Server.isInDataBase(idString, idType)) {
-                            success = Server.sendMessage(p);
+                case MSG_REQUEST: {
+                    // Request all incoming messages
+                    if (Server.isInDataBase(p.getSenderID(), ClientIDType.ID)) {
+                        ArrayList<Message> messages = Server.checkMessages(p.getSenderID());
+                        if (messages.size() > 0) {
+                            success = sendMSG(messages);
                             if (!success) {
-                                // TODO: Handle the situation in which an attempt was made to send a message to another
-                                //  user through the server but it failed
                                 LogMessage("Failed to send message or receive confirmation");
-                            }else{
-                                sendToClient(RECEIVED_CONFIRM); // Acknowledge the message was successfully sent to another user
                             }
                         } else {
-                            LogMessage("User: %s is not in database",idString);
-                            sendToClient(UNKNOWN_USER_ERROR);
+                            sendMSG(null);
                         }
+                    } else {
+                        LogMessage("Client is not registered!");
                     }
-                    break;
-                    case PUBLIC_KEY_REQUEST:
-                        // Since the public key is being shared here one does not have to encrypt this public key with
-                        // the public key of the recipient
-                        if (p.getDestID() != null) {
+                }
+                break;
+                case MSG: {
+                    // Forward message
+                    ClientIDType idType;
+                    String idString;
+                    if (p.getDestID() == null) {
+                        idType = ClientIDType.NAME;
+                        idString = p.getFullName();
+                    } else {
+                        idType = ClientIDType.ID;
+                        idString = p.getDestID();
+                    }
+                    if (Server.isInDataBase(idString, idType)) {
+                        success = Server.sendMessage(p);
+                        if (!success) {
+                            // TODO: Handle the situation in which an attempt was made to send a message to another
+                            //  user through the server but it failed
+                            LogMessage("Failed to send message or receive confirmation");
+                        }else{
+                            sendToClient(RECEIVED_CONFIRM); // Acknowledge the message was successfully sent to another user
+                        }
+                    } else {
+                        LogMessage("User: %s is not in database",idString);
+                        sendToClient(UNKNOWN_USER_ERROR);
+                    }
+                }
+                break;
+                case PUBLIC_KEY_REQUEST:
+                    // Since the public key is being shared here one does not have to encrypt this public key with
+                    // the public key of the recipient
+                    if (p.getDestID() != null) {
+                        if(Server.isInDataBase(p.getDestID(),ClientIDType.ID)) {
                             String pKey = Server.getPublicKeyByID(p.getDestID());
                             success = sendToClient(new Packet(
                                     PacketType.PUBLIC_KEY_REQUEST,
@@ -123,7 +123,13 @@ public class ClientHandler implements Runnable {
                                     pKey
                             ));
                         }
-                        else if(p.hasName()){
+                        else{
+                            LogMessage("Destination not in database");
+                            sendToClient(UNKNOWN_USER_ERROR);
+                        }
+                    }
+                    else if(p.hasName()){
+                        if(Server.isInDataBase(p.getFullName(),ClientIDType.NAME)) {
                             String pKey = Server.getPublicKeyByName(p.getFullName());
                             String destination = Server.nameToID(p.getFullName());
                             success = sendToClient(new Packet(
@@ -137,25 +143,27 @@ public class ClientHandler implements Runnable {
                             ));
                         }
                         else{
-                            // Send an error packet if the destination is undefined
-                            sendToClient(ERROR);
+                            LogMessage("Destination not in database");
+                            sendToClient(UNKNOWN_USER_ERROR);
                         }
-                        break;
-                    case CLOSE:
-                        LogMessage("Close requested!");
-                        kill();
-                        Server.close(this);
-                        break;
-                    default:
-                        // TODO: Implement some error resolving method for this situation
-                        //  (Also check whether it will every get here)
-                        LogMessage("Something went wrong! Unhandled PacketType was received in ClientHandler");
-                        break;
-                }
-
-            } catch (ClassNotFoundException | IOException e) {
-                e.printStackTrace();
+                    }
+                    else{
+                        // Send an error packet if the destination is undefined
+                        sendToClient(ERROR);
+                    }
+                    break;
+                case CLOSE:
+                    LogMessage("Close requested!");
+                    kill();
+                    Server.close(this);
+                    break;
+                default:
+                    // TODO: Implement some error resolving method for this situation
+                    //  (Also check whether it will every get here)
+                    LogMessage("Something went wrong! Unhandled PacketType was received in ClientHandler");
+                    break;
             }
+
         }
         try {
             close();
