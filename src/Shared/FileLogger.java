@@ -8,7 +8,7 @@ import java.util.Date;
 
 public abstract class FileLogger {
     private static final String baseDir = "logs/";
-    public static void writeLogToFile(String log){
+    public synchronized static void writeLogToFile(String log){
         System.out.println("Writing to file");
         try {
             String newFileName = baseDir + getName();
