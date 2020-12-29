@@ -163,7 +163,6 @@ public class ClientHandler implements Runnable {
                     LogMessage("Something went wrong! Unhandled PacketType was received in ClientHandler");
                     break;
             }
-
         }
         try {
             close();

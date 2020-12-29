@@ -146,6 +146,11 @@ public class Client implements Runnable{
         while(System.currentTimeMillis() < endTime){
             checkMessages();
             executeAction();
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
 
         System.out.printf("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
