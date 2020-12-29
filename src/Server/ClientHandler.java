@@ -142,8 +142,8 @@ public class ClientHandler implements Runnable {
                         break;
                     case CLOSE:
                         LogMessage("Close requested!");
-                        active = false;
-                        break;
+                        kill();
+                        Server.close(this);
                     default:
                         // TODO: Implement some error resolving method for this situation
                         //  (Also check whether it will every get here)

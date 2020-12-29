@@ -75,6 +75,11 @@ public class Server {
         }
     }
 
+    public static void close(ClientHandler clientHandler) {
+        SESSIONS.remove(clientHandler);
+        THREAD_BY_CLIENT.remove(clientHandler);
+    }
+
     public static ArrayList<Message> checkMessages(String id) throws IOException, ClassNotFoundException {
         synchronized (LOCK) {
             ArrayList<Message> messages = MSG_BY_ID.get(id);
