@@ -18,11 +18,15 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Objects;
 
+import static Shared.ConsoleLogger.LogMessage;
+
 public class Client implements Runnable{
 
     private static final boolean DEBUG = false;
 
     private final PacketLogger pktLog;
+
+    private final ArrayList<String> receivedMessages;
 
     private ObjectInputStream objectInputStream;
     private ObjectOutputStream objectOutputStream;
@@ -59,11 +63,12 @@ public class Client implements Runnable{
         pktLog = new PacketLogger();
         s = null;
         actions = new ArrayList<>();
+        receivedMessages = new ArrayList<>();
         // Parse the JSON file and connect to the server
         try {
             parseJSON(file);
             s = connectToServer(InetAddress.getLoopbackAddress(),PORT);
-            System.out.println("Socket connected");
+            LogMessage("Socket connected");
         } catch (IOException | ParseException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -73,7 +78,8 @@ public class Client implements Runnable{
             objectOutputStream = new ObjectOutputStream(s.getOutputStream());
 
             boolean verified = false;
-            System.out.println("Start clientside verification");
+            LogMessage("Start clientside verification");
+            System.out.println();
             while (!verified) {
                 objectOutputStream.writeObject(pktLog.newOut(
                         new Packet(PacketType.SYN,
@@ -124,7 +130,7 @@ public class Client implements Runnable{
             try {
                 sock = new Socket(hostAddr, port);
             } catch (ConnectException e) {
-                System.out.println("Timeout on connection request"); //Server was not open yet probably
+                LogMessage("Timeout on connection request");
                 Thread.sleep(100);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -135,7 +141,7 @@ public class Client implements Runnable{
 
     @Override
     public void run() {
-        System.out.printf("Started client on thread: %s\n",Thread.currentThread().getName());
+        LogMessage("Started client on thread: %s\n",Thread.currentThread().getName());
         long endTime;
         if(DEBUG){
             endTime = System.currentTimeMillis() + Long.parseLong(this.duration);
@@ -148,12 +154,12 @@ public class Client implements Runnable{
             executeAction();
         }
 
-        System.out.printf("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
+        LogMessage("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
         socketClose();
 
         // Print all logged packets
         FileLogger.writeLogToFile(pktLog.getLoggedSequence());
-        FileLogger.writeLogToFile(pktLog.getLoggedIncoming());
+        FileLogger.writeMessagesToFile(receivedMessages,this.name);
     }
 
     /**
@@ -214,7 +220,7 @@ public class Client implements Runnable{
 
     private void executeAction(){
         if(!this.actions.isEmpty()){
-            System.out.println("Executing action");
+            LogMessage("Executing action");
             Action action = this.actions.get(0);
             this.actions.remove(0);
             if(action.getType().equals("SEND")){
@@ -268,7 +274,7 @@ public class Client implements Runnable{
             }
             else{
                 // UNKNOWN USER ERROR
-                System.out.println("Trying to send message to unknown user!");
+                LogMessage("Trying to send message to unknown user!");
                 return false;
             }
         }catch (IOException e){
@@ -303,7 +309,7 @@ public class Client implements Runnable{
             }
             p = pktLog.newIn(objectInputStream.readObject());
             if(p.getType() == PacketType.UNKNOWN_USER_ERROR){
-                System.out.println("Attempted to send message to user unknown to the database!");
+                LogMessage("Attempted to send message to user unknown to the database!");
                 return false;
             }
             else{
@@ -368,17 +374,22 @@ public class Client implements Runnable{
             if(p.getType() != PacketType.NO_MSGs) {
                 Object o = p.getData();
                 if(o instanceof String){
-                    System.out.printf("Message: %s\n", Encryption.decrypt(this.privateKey,(String)o));
+                    String message = Encryption.decrypt(this.privateKey,(String)o);
+                    receivedMessages.add(message);
+                    LogMessage("Message: %s\n", message);
 
                 }else if(o instanceof Message){
-                    System.out.printf("Message: %s\n", Encryption.decrypt(this.privateKey,((Message) o).getMessage()));
+                    String message = Encryption.decrypt(this.privateKey,((Message) o).getMessage());
+                    receivedMessages.add(message);
+                    LogMessage("Message: %s\n", Encryption.decrypt(this.privateKey,((Message) o).getMessage()));
 
                 }else if(o instanceof ArrayList){
                     ArrayList<?> messages = (ArrayList<?>) o;
                     for (Object message : messages) {
                         Message m = (Message) message;
-                        // TODO: Decrypt the data
-                        System.out.printf("Message: %s\n", Encryption.decrypt(this.privateKey,m.getMessage()));
+                        String decryptedMessage = Encryption.decrypt(this.privateKey,m.getMessage());
+                        receivedMessages.add(decryptedMessage);
+                        LogMessage("Message: %s\n", decryptedMessage);
                     }
                 }
             }

@@ -10,6 +10,8 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import static Shared.ConsoleLogger.LogMessage;
+
 public class Server {
 
     // TODO: Add locked synchronisation for data structure
@@ -17,7 +19,6 @@ public class Server {
     public static final int PORT = 4444;
     public static final InetAddress INET_ADDRESS = InetAddress.getLoopbackAddress();
     private static final int BACK_LOG = 5;
-
 
     private static final int CLIENT_LIMIT = 4;
     private static final ArrayList<ClientHandler> SESSIONS = new ArrayList<>();
@@ -30,7 +31,7 @@ public class Server {
 
     public static void main(String[] args) {
         // TODO: close socket when client disconnects
-        System.out.println(INET_ADDRESS);
+        LogMessage(INET_ADDRESS);
         try {
             ServerSocket ss = new ServerSocket(PORT,BACK_LOG,INET_ADDRESS);
             while (!ss.isClosed()) {

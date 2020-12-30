@@ -11,6 +11,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 
+import static Shared.ConsoleLogger.LogMessage;
 import static Shared.Packet.PacketType.*;
 
 /**
@@ -21,7 +22,7 @@ import static Shared.Packet.PacketType.*;
  */
 public class ClientHandler implements Runnable {
 
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     private final Socket clientSocket;
     private ObjectInputStream OIS;
@@ -320,12 +321,5 @@ public class ClientHandler implements Runnable {
         return this.active;
     }
 
-    private void LogMessage(String message, Object... args){
-        if(DEBUG)
-        System.out.printf(Thread.currentThread().getName() + ": "+ message + "\n",args);
-    }
-    private void LogMessage(String message){
-        if(DEBUG)
-        System.out.println(Thread.currentThread().getName() + ": " + message);
-    }
+
 }
