@@ -15,7 +15,9 @@ import java.io.*;
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Objects;
 
 import static Shared.ConsoleLogger.LogMessage;
@@ -373,23 +375,24 @@ public class Client implements Runnable{
             )));
             if(p.getType() != PacketType.NO_MSGs) {
                 Object o = p.getData();
+                String t = new SimpleDateFormat("dd-MM-yyyy,HH:mm").format(new Date());
                 if(o instanceof String){
-                    String message = Encryption.decrypt(this.privateKey,(String)o);
+                    String message = t + "-> " + Encryption.decrypt(this.privateKey,(String)o);
                     receivedMessages.add(message);
-                    LogMessage("Message: %s\n", message);
+                    LogMessage("Message %s\n", message);
 
                 }else if(o instanceof Message){
-                    String message = Encryption.decrypt(this.privateKey,((Message) o).getMessage());
+                    String message = t + "-> " + Encryption.decrypt(this.privateKey,((Message) o).getMessage());
                     receivedMessages.add(message);
-                    LogMessage("Message: %s\n", Encryption.decrypt(this.privateKey,((Message) o).getMessage()));
+                    LogMessage("Message %s\n", Encryption.decrypt(this.privateKey,((Message) o).getMessage()));
 
                 }else if(o instanceof ArrayList){
                     ArrayList<?> messages = (ArrayList<?>) o;
                     for (Object message : messages) {
                         Message m = (Message) message;
-                        String decryptedMessage = Encryption.decrypt(this.privateKey,m.getMessage());
+                        String decryptedMessage = t + "-> " + Encryption.decrypt(this.privateKey,m.getMessage());
                         receivedMessages.add(decryptedMessage);
-                        LogMessage("Message: %s\n", decryptedMessage);
+                        LogMessage("Message %s\n", decryptedMessage);
                     }
                 }
             }

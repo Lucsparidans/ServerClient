@@ -19,7 +19,6 @@ public abstract class FileLogger {
             ioException.printStackTrace();
         }
     }
-
     public synchronized static void writeMessagesToFile(String message, String clientName){
         try{
             String newFileName = baseDirMessages + clientName + getTimeStamp();
@@ -28,7 +27,6 @@ public abstract class FileLogger {
             ioException.printStackTrace();
         }
     }
-
     public synchronized static void writeMessagesToFile(ArrayList<String> messages, String clientName){
         try{
             String newFileName = baseDirMessages + clientName + getTimeStamp();
@@ -48,11 +46,9 @@ public abstract class FileLogger {
         fileWriter.write(data);
         fileWriter.close();
     }
-
     private static String getTimeStamp(){
         return new SimpleDateFormat("yyyyMMddHHmm").format(new Date());
     }
-
     private static String formatAsString(ArrayList<String> messages){
         StringBuilder sb = new StringBuilder();
         messages.forEach(m -> sb.append(m).append("\n"));
