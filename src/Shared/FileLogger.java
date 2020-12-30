@@ -38,10 +38,11 @@ public abstract class FileLogger {
         }
     }
     private static void makeFile(String data, String newFileName) throws IOException {
-        File f = new File(newFileName);
+        String fileExtension = ".txt";
+        File f = new File(newFileName + fileExtension);
         int cnt = 1;
         while(f.exists()){
-            f = new File(String.format("%s(%d).txt",newFileName,cnt++));
+            f = new File(String.format("%s(%d)%s",newFileName,cnt++,fileExtension));
         }
         FileWriter fileWriter = new FileWriter(f);
         fileWriter.write(data);
