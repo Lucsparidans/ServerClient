@@ -76,6 +76,27 @@ public class Organisation implements Runnable{
 
     }
 
+    private void add(String id, String fromAccount, String toAccount, double amount){
+        if(amount>=balances.get(fromAccount)){
+            double newBalanceSend = balances.get(fromAccount) - amount;
+            balances.replace(fromAccount, newBalanceSend);
+            double newBalanceRec = balances.get(toAccount) + amount;
+            balances.replace(toAccount, newBalanceRec);
+        }
+        else{
+            System.out.println("not enough cash");
+        }
+    }
+
+    private void sub(String id, String account, double amount){
+        if(amount>=balances.get(account)){
+            double newBalance = balances.get(account) - amount;
+            balances.replace(account, newBalance);
+        }
+        else{ System.out.println("not enough cash");
+        }
+    }
+
     private Packet receivePacket(){
         try {
             return pktLog.newIn(objectInputStream.readObject());
