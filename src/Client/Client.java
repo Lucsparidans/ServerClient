@@ -149,7 +149,7 @@ public class Client implements Runnable{
             endTime = System.currentTimeMillis() + Long.parseLong(this.duration);
         }
         else{
-            endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 10L;
+            endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 1000L;
         }
         while(System.currentTimeMillis() < endTime){
             checkMessages();
