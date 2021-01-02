@@ -18,6 +18,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import static Shared.ConsoleLogger.LogMessage;
 
@@ -65,6 +66,7 @@ public class Organisation implements Runnable{
     }
     private final HashMap<String, Role> clients = new HashMap<>();
     private final HashMap<String, Double> balances = new HashMap<>();
+    private final LinkedBlockingQueue<Action> actions = new LinkedBlockingQueue<>();
 
     public Organisation(String file) {
         // TODO: GET ROLES FROM JSON
@@ -200,7 +202,7 @@ public class Organisation implements Runnable{
             // Request messages from the server for this client
             objectOutputStream.writeObject(pktLog.newOut(
                     new Packet(Packet.PacketType.MSG_REQUEST,
-                            id,
+                            null,
                             null,
                             null,
                             null,
@@ -225,33 +227,71 @@ public class Organisation implements Runnable{
             )));
             if(p.getType() != Packet.PacketType.NO_MSGs) {
                 Object o = p.getData();
-                String t = new SimpleDateFormat("dd-MM-yyyy,HH:mm").format(new Date());
-                if(o instanceof String){
-                    String message = t + "-> " + Encryption.decrypt(this.privateKey,(String)o);
+                if (o instanceof String) {
+                    String message = Encryption.decrypt(this.privateKey, (String) o);
                     receivedMessages.add(message);
-                    object = parseAction();
+                    parseAction(message);
                     LogMessage("Message %s\n", message);
 
-                }else if(o instanceof Message){
-                    String message = t + "-> " + Encryption.decrypt(this.privateKey,((Message) o).getMessage());
+                } else if (o instanceof Message) {
+                    String message = Encryption.decrypt(this.privateKey, ((Message) o).getMessage());
                     receivedMessages.add(message);
-                    LogMessage("Message %s\n", Encryption.decrypt(this.privateKey,((Message) o).getMessage()));
+                    parseAction(message);
+                    LogMessage("Message %s\n", Encryption.decrypt(this.privateKey, ((Message) o).getMessage()));
 
-                }else if(o instanceof ArrayList){
+                } else if (o instanceof ArrayList) {
                     ArrayList<?> messages = (ArrayList<?>) o;
                     for (Object message : messages) {
                         Message m = (Message) message;
-                        String decryptedMessage = t + "-> " + Encryption.decrypt(this.privateKey,m.getMessage());
+                        String decryptedMessage = Encryption.decrypt(this.privateKey, m.getMessage());
                         receivedMessages.add(decryptedMessage);
+                        parseAction(decryptedMessage);
                         LogMessage("Message %s\n", decryptedMessage);
                     }
                 }
+
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
 
+    private void parseAction(String action){
+        String[] parts = action.toString().split("\\[");
+
+        String actionType = parts[0];
+        actionType = actionType.replace(" ", "");
+
+        if(parts.length == 3){
+            String fromId = parts[1];
+            fromId = fromId.replace("] ", "");
+
+            String amount = parts[2];
+            amount = amount.replace("]", "");
+            try {
+                this.actions.put(new Action(actionType, fromId, null, amount));
+            }
+            catch (InterruptedException e){
+                System.out.println("ERROR IN QUEUE");
+            }
+        }
+        else if(parts.length == 4){
+            String fromId = parts[1];
+            fromId = fromId.replace("] ", "");
+
+            String toId = parts[2];
+            toId = toId.replace("] ", "");
+
+            String amount = parts[3];
+            amount = amount.replace("]", "");
+            try {
+                this.actions.put(new Action(actionType,fromId,toId,amount));
+            }
+            catch (InterruptedException e){
+                System.out.println("ERROR IN QUEUE");
+            }
+        }
+    }
 
     private void add(String id, String fromAccount, String toAccount, double amount){
         if(amount>=balances.get(fromAccount)){
