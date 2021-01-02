@@ -24,7 +24,7 @@ import static Shared.ConsoleLogger.LogMessage;
 
 public class Client implements Runnable{
 
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = true;
 
     private final PacketLogger pktLog;
 
@@ -107,7 +107,9 @@ public class Client implements Runnable{
                                 )));
                     }
                     p = pktLog.newIn(objectInputStream.readObject());
-                    if(p.getType() == PacketType.RECEIVED_CONFIRM) System.out.println("ACK");
+                    if(p.getType() == PacketType.RECEIVED_CONFIRM){
+                        // NOPE
+                    }
                 } else
                     Thread.sleep(Integer.parseInt(timeout) * 1000L);
             }
@@ -291,6 +293,9 @@ public class Client implements Runnable{
         // TODO: Encrypt
         Object o = packet.getData();
         if(o instanceof String){
+            if(pKey == null){
+                System.out.println("Heeeeelpp");
+            }
             packet.setData(Encryption.encrypt(pKey,(String)o));
         }else if(o instanceof Message){
             Message msg = (Message)o;

@@ -68,6 +68,9 @@ public class Packet implements Serializable {
     }
 
     public String getFullName() {
+        if(this.firstName == null || this.lastName == null){
+            return this.senderID;
+        }
         return this.firstName.concat(" ".concat(this.lastName));
     }
 

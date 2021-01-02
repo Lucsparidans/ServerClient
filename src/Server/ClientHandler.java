@@ -23,7 +23,7 @@ import static Shared.Packet.PacketType.*;
  */
 public class ClientHandler implements Runnable {
 
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = true;
 
     private final Socket clientSocket;
     private ObjectInputStream OIS;

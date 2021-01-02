@@ -44,7 +44,7 @@ public class Server {
         LogMessage(INET_ADDRESS);
         try {
             ServerSocket ss = new ServerSocket(PORT,BACK_LOG,INET_ADDRESS);
-            initializeOrganisations(ORG_PATH);
+            new Thread(new InitOrgs()).start();
             while (!ss.isClosed()) {
                 // TODO: create method to shutdown (all) threads
                 if(SESSIONS.size() < CLIENT_LIMIT){
@@ -180,7 +180,7 @@ public class Server {
             }
         }
     }
-    private static void initializeOrganisations(String path){
+    private static void initializeOrganisations(){
         JSONParser jsonParser = new JSONParser();
         try{
             JSONObject data = (JSONObject) jsonParser.parse(new FileReader(ORG_PATH));
@@ -198,6 +198,12 @@ public class Server {
         }
     }
 
+    private static class InitOrgs implements Runnable{
+        @Override
+        public void run() {
+            initializeOrganisations();
+        }
+    }
     public static boolean isInDataBase(String data, ClientIDType type){
         synchronized (LOCK) {
             if (type == ClientIDType.NAME) {

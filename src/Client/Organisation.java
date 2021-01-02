@@ -1,10 +1,7 @@
 package Client;
 
 import Server.Encryption;
-import Shared.FileLogger;
-import Shared.Message;
-import Shared.Packet;
-import Shared.PacketLogger;
+import Shared.*;
 import org.jetbrains.annotations.NotNull;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -22,10 +19,11 @@ import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import static Shared.ConsoleLogger.LogMessage;
+import static Shared.Packet.PacketType.RECEIVED_CONFIRM;
 
 public class Organisation implements Runnable{
 
-    private static final boolean DEBUG = false;
+    private static final long TIMEOUT = 10L;
 
     private final PacketLogger pktLog;
 
@@ -37,6 +35,7 @@ public class Organisation implements Runnable{
     private Socket s;
 
     private boolean running;
+    private final Object LOCK = new Object();
     private static final int PORT = 4444;
     private String name;
     private String duration;
@@ -44,6 +43,7 @@ public class Organisation implements Runnable{
     private String privateKey;
     private String publicKey;
     private Double balance;
+
 
     public enum Role{
         CUSTOMER {
@@ -74,6 +74,10 @@ public class Organisation implements Runnable{
         pktLog = new PacketLogger();
         s = null;
         receivedMessages = new ArrayList<>();
+        KeyPairB64 keyPairB64 = KeyPairGenerator.generateRSAKeyPair();
+        privateKey = keyPairB64.getPrivateKey();
+        publicKey = keyPairB64.getPublicKey();
+
         try {
             parseJSON(organisation); //TODO: Parse the JSON file and extract fields
             s = connectToServer(InetAddress.getLoopbackAddress(),PORT);
@@ -87,7 +91,7 @@ public class Organisation implements Runnable{
             objectOutputStream = new ObjectOutputStream(s.getOutputStream());
 
             boolean verified = false;
-            LogMessage("Start clientside verification");
+            LogMessage("ORG: Start clientside verification");
             System.out.println();
             while (!verified) {
                 objectOutputStream.writeObject(pktLog.newOut(
@@ -108,13 +112,13 @@ public class Organisation implements Runnable{
                                         name,
                                         null,
                                         null,
-                                        name.split(" ")[0].toUpperCase(),
-                                        name.split(" ")[1].toUpperCase(),
+                                        null,
+                                        null,
                                         publicKey
                                 )));
                     }
                     p = pktLog.newIn(objectInputStream.readObject());
-                    if(p.getType() == Packet.PacketType.RECEIVED_CONFIRM) System.out.println("ACK");
+                    if(p.getType() == RECEIVED_CONFIRM) System.out.println("ACK");
                 } else {
                     //Thread.sleep(Integer.parseInt(timeout) * 1000L);
                 }
@@ -170,6 +174,10 @@ public class Organisation implements Runnable{
                         null,
                         null,
                         Encryption.encrypt(publicKey,Role.CUSTOMER.toString())));
+                Packet p = receivePacket();
+                if(p.getType() != RECEIVED_CONFIRM){
+                    // Do something
+                }
             }
             else{
                 sendPacket(new Packet(Packet.PacketType.MSG,
@@ -180,6 +188,10 @@ public class Organisation implements Runnable{
                         null,
                         null,
                         Encryption.encrypt(publicKey,clients.get(id).toString())));
+                Packet p = receivePacket();
+                if(p.getType() != RECEIVED_CONFIRM){
+                    // Do something
+                }
             }
         }
     }
@@ -202,39 +214,34 @@ public class Organisation implements Runnable{
 
     @Override
     public void run() {
+        running = true;
+        LogMessage("Started client on thread: %s\n",Thread.currentThread().getName());
+        MessageHandler messageHandler = new MessageHandler();
+        ActionHandler actionHandler = new ActionHandler();
+
+        new Thread(messageHandler).start();
+        new Thread(actionHandler).start();
+
         while (running){
-            // TODO: WAIT FOR MESSAGE AND EXECUTE ACTION IN THE MESSAGE
-            LogMessage("Started client on thread: %s\n",Thread.currentThread().getName());
-            MessageHandler messageHandler = new MessageHandler();
-            ActionHandler actionHandler = new ActionHandler();
-            long endTime;
-            if(DEBUG){
-                endTime = System.currentTimeMillis() + Long.parseLong(this.duration);
-            }
-            else{
-                endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 1000L;
-            }
-
-            new Thread(messageHandler).start();
-            new Thread(actionHandler).start();
-
+            // Threads are doing stuff
             try{
-                Thread.sleep(endTime-System.currentTimeMillis());
-            }  catch (InterruptedException e){
+                Thread.sleep(TIMEOUT);
+            }catch (InterruptedException e){
                 e.printStackTrace();
             }
-
-            //ending message handler and action handler
-            messageHandler.end();
-            actionHandler.end();
-
-            LogMessage("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
-            socketClose();
-
-            // Print all logged packets
-            FileLogger.writeLogToFile(pktLog.getLoggedSequence());
-            FileLogger.writeMessagesToFile(receivedMessages,name);
         }
+
+        //ending message handler and action handler
+        messageHandler.end();
+        actionHandler.end();
+
+        LogMessage("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
+        socketClose();
+
+        // Print all logged packets
+        FileLogger.writeLogToFile(pktLog.getLoggedSequence());
+        FileLogger.writeMessagesToFile(receivedMessages,name);
+
     }
 
     private void handleActions() {
@@ -261,7 +268,10 @@ public class Organisation implements Runnable{
                         null,
                         null
                 ));
-                //TODO: SEND BACK A MESSAGE SAYING NOT ENOUGH BALANCE
+                Packet p = receivePacket();
+                if(p.getType() != RECEIVED_CONFIRM){
+                    // Do something
+                }
             }
         }
         else if(action.getType().equals("SUB")){
@@ -274,8 +284,11 @@ public class Organisation implements Runnable{
                         null,
                         null,
                         null
-                        ));
-                //TODO: SEND BACK A MESSAGE SAYING NOT ENOUGH BALANCE
+                ));
+                Packet p = receivePacket();
+                if(p.getType() != RECEIVED_CONFIRM){
+                    // Do something
+                }
             }
         }
     }
@@ -291,32 +304,35 @@ public class Organisation implements Runnable{
 
     private void checkMessages(){
         try{
-            // Request messages from the server for this client
-            objectOutputStream.writeObject(pktLog.newOut(
-                    new Packet(Packet.PacketType.MSG_REQUEST,
-                            name,
-                            null,//TODO: id,
-                            null,
-                            null,
-                            null,
-                            null)
-            ));
-            Packet conf = pktLog.newIn(objectInputStream.readObject());
-            if(conf.getType() != Packet.PacketType.RECEIVED_CONFIRM){
-                // TODO: Handle!
+            Packet p;
+            synchronized (LOCK) {
+                // Request messages from the server for this client
+                objectOutputStream.writeObject(pktLog.newOut(
+                        new Packet(Packet.PacketType.MSG_REQUEST,
+                                name,
+                                null,//TODO: id,
+                                null,
+                                null,
+                                null,
+                                null)
+                ));
+                Packet conf = pktLog.newIn(objectInputStream.readObject());
+                if (conf.getType() != RECEIVED_CONFIRM) {
+                    // TODO: Handle!
+                }
+                // Response from server
+                p = pktLog.newIn(objectInputStream.readObject());
+                // Send confirmation of receiving the message
+                objectOutputStream.writeObject(pktLog.newOut(new Packet(
+                        RECEIVED_CONFIRM,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                )));
             }
-            // Response from server
-            Packet p = pktLog.newIn(objectInputStream.readObject());
-            // Send confirmation of receiving the message
-            objectOutputStream.writeObject(pktLog.newOut(new Packet(
-                    Packet.PacketType.RECEIVED_CONFIRM,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null
-            )));
             if(p.getType() != Packet.PacketType.NO_MSGs) {
                 Object o = p.getData();
                 String t = new SimpleDateFormat("dd-MM-yyyy,HH:mm").format(new Date());
@@ -435,20 +451,24 @@ public class Organisation implements Runnable{
     }
 
     private Packet receivePacket(){
-        try {
-            return pktLog.newIn(objectInputStream.readObject());
-        }catch (IOException | ClassNotFoundException e){
-            e.printStackTrace();
+        synchronized (LOCK) {
+            try {
+                return pktLog.newIn(objectInputStream.readObject());
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+            return null;
         }
-        return null;
     }
     private void sendPacket(Packet p){
-        try {
-            objectOutputStream.writeObject(pktLog.newOut(p));
-            Packet pIn = pktLog.newIn(objectInputStream.readObject());
-            assert pIn.getType() == Packet.PacketType.RECEIVED_CONFIRM;
-        }catch(IOException | ClassNotFoundException e){
-            e.printStackTrace();
+        synchronized (LOCK) {
+            try {
+                objectOutputStream.writeObject(pktLog.newOut(p));
+                Packet pIn = pktLog.newIn(objectInputStream.readObject());
+                assert pIn.getType() == RECEIVED_CONFIRM;
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
         }
     }
 
