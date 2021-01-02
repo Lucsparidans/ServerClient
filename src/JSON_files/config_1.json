@@ -19,9 +19,9 @@
 	},
 	"actions": [
 		"SEND [Bank] REGISTER [10000]",
-		"SEND [Bank] CLOCKS IN",
+		"SEND [Bank] CHECK-IN",
 		"SEND [Bank] SUB [Bank] [10000]",
-		"SEND [Bank] CLOCKS OUT",
+		"SEND [Bank] CHECK-OUT",
 		"SEND [Bank] SUB [Bank] [40000]",
 		"SEND [Bank] SUB [5856e6cd-0da6-4573-9a04-cbb11f5e68d3] [500]"
 	]
