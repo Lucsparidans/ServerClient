@@ -202,7 +202,7 @@ public class Organisation implements Runnable{
             // Request messages from the server for this client
             objectOutputStream.writeObject(pktLog.newOut(
                     new Packet(Packet.PacketType.MSG_REQUEST,
-                            null,
+                            NAME,
                             null,
                             null,
                             null,
@@ -227,26 +227,32 @@ public class Organisation implements Runnable{
             )));
             if(p.getType() != Packet.PacketType.NO_MSGs) {
                 Object o = p.getData();
+                String t = new SimpleDateFormat("dd-MM-yyyy,HH:mm").format(new Date());
                 if (o instanceof String) {
                     String message = Encryption.decrypt(this.privateKey, (String) o);
-                    receivedMessages.add(message);
                     parseAction(message);
+                    message =  t + "-> " + message;
+                    receivedMessages.add(message);
                     LogMessage("Message %s\n", message);
 
                 } else if (o instanceof Message) {
                     String message = Encryption.decrypt(this.privateKey, ((Message) o).getMessage());
                     receivedMessages.add(message);
                     parseAction(message);
-                    LogMessage("Message %s\n", Encryption.decrypt(this.privateKey, ((Message) o).getMessage()));
+                    message = t + "-> " + message;
+                    receivedMessages.add(message);
+                    LogMessage("Message %s\n", message);
 
                 } else if (o instanceof ArrayList) {
                     ArrayList<?> messages = (ArrayList<?>) o;
                     for (Object message : messages) {
                         Message m = (Message) message;
                         String decryptedMessage = Encryption.decrypt(this.privateKey, m.getMessage());
-                        receivedMessages.add(decryptedMessage);
                         parseAction(decryptedMessage);
+                        decryptedMessage = t + "-> " + decryptedMessage;
+                        receivedMessages.add(decryptedMessage);
                         LogMessage("Message %s\n", decryptedMessage);
+
                     }
                 }
 
