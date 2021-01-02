@@ -6,7 +6,6 @@ import Shared.FileLogger;
 import Shared.Packet;
 import Shared.PacketLogger;
 import org.bouncycastle.util.Pack;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -128,7 +127,7 @@ public class Organisation implements Runnable{
         this.NAME = "BANK";
     }
 
-    private Socket connectToServer(@NotNull InetAddress hostAddr, int port) throws InterruptedException {
+    private Socket connectToServer(InetAddress hostAddr, int port) throws InterruptedException {
         Socket sock = null;
         while (sock == null) {
             // REGISTRATION
@@ -149,8 +148,20 @@ public class Organisation implements Runnable{
 
     }
 
-    private void verification(){
+    private boolean verification(Packet packet){
         // TODO: Verify cert and the permission it grants
+        if(packet.getCertificate()!= null){
+            String decryptCert = Encryption.decrypt(privateKey, packet.getCertificate());
+            if(decryptCert.equals(clients.get(packet.getSenderID()).toString())){
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        else{
+            return false;
+        }
     }
 
     @Override
@@ -300,24 +311,41 @@ public class Organisation implements Runnable{
     }
 
     private void add(String id, String fromAccount, String toAccount, double amount){
-        if(amount>=balances.get(fromAccount)){
-            double newBalanceSend = balances.get(fromAccount) - amount;
-            balances.replace(fromAccount, newBalanceSend);
-            double newBalanceRec = balances.get(toAccount) + amount;
-            balances.replace(toAccount, newBalanceRec);
+        if(checkAccountExist(fromAccount) && checkAccountExist(toAccount)) {
+            if (amount >= balances.get(fromAccount)) {
+                double newBalanceSend = balances.get(fromAccount) - amount;
+                balances.replace(fromAccount, newBalanceSend);
+                double newBalanceRec = balances.get(toAccount) + amount;
+                balances.replace(toAccount, newBalanceRec);
+            } else {
+                System.out.println("not enough cash");
+            }
         }
         else{
-            System.out.println("not enough cash");
+            System.out.println("One of the two accounts does not exist");
         }
     }
 
     private void sub(String id, String account, double amount){
-        if(amount>=balances.get(account)){
-            double newBalance = balances.get(account) - amount;
-            balances.replace(account, newBalance);
+        if(checkAccountExist(account)) {
+            if (amount >= balances.get(account)) {
+                double newBalance = balances.get(account) - amount;
+                balances.replace(account, newBalance);
+            } else {
+                System.out.println("not enough cash");
+            }
         }
         else{
-            System.out.println("not enough cash");
+            System.out.println("account does not exist");
+        }
+    }
+
+    private boolean checkAccountExist(String account){
+        if(balances.containsKey(account)){
+            return true;
+        }
+        else{
+            return false;
         }
     }
 
