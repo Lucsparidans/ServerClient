@@ -155,9 +155,33 @@ public class Organisation implements Runnable{
         return sock;
     }
 
-    private void register(){
+    private void register(String id, Double amount){
         // TODO: IO and exchange certs
-
+        if(!balances.containsKey(id)){
+            balances.put(id, amount);
+            // TODO: always need a new certificate
+            if(!clients.containsKey(id)){
+                clients.put(id, Role.CUSTOMER);
+                sendPacket(new Packet(Packet.PacketType.MSG,
+                        name,
+                        id,
+                        null,
+                        null,
+                        null,
+                        null,
+                        Encryption.encrypt(publicKey,Role.CUSTOMER.toString())));
+            }
+            else{
+                sendPacket(new Packet(Packet.PacketType.MSG,
+                        name,
+                        id,
+                        null,
+                        null,
+                        null,
+                        null,
+                        Encryption.encrypt(publicKey,clients.get(id).toString())));
+            }
+        }
     }
 
     private boolean verification(Packet packet){
@@ -223,17 +247,34 @@ public class Organisation implements Runnable{
             System.out.println("Interrupted Exception when handling action");
         }
         if(action.getType().equals("REGISTER")){
-            //register();
+            register(action.getFromID(), Double.parseDouble(action.getMessageAsString()));
         }
         else if(action.getType().equals("ADD")){
             boolean success = add(action.getFromID(), action.getToID(), Double.parseDouble(action.getMessageAsString()));
             if(!success){
+                // TODO: SHIT synchronise message to and from
+                sendPacket(new Packet(Packet.PacketType.MSG,
+                        name,
+                        action.getFromID(),
+                        "ERROR",
+                        null,
+                        null,
+                        null
+                ));
                 //TODO: SEND BACK A MESSAGE SAYING NOT ENOUGH BALANCE
             }
         }
         else if(action.getType().equals("SUB")){
             boolean success = sub(action.getFromID(), Double.parseDouble(action.getMessageAsString()));
             if(!success){
+                sendPacket(new Packet(Packet.PacketType.MSG,
+                        name,
+                        action.getFromID(),
+                        "ERROR",
+                        null,
+                        null,
+                        null
+                        ));
                 //TODO: SEND BACK A MESSAGE SAYING NOT ENOUGH BALANCE
             }
         }
