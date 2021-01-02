@@ -1,8 +1,8 @@
 package Client;
 
 import Server.Encryption;
-import Server.Message;
 import Shared.FileLogger;
+import Shared.Message;
 import Shared.Packet;
 import Shared.Packet.PacketType;
 import Shared.PacketLogger;

@@ -2,6 +2,7 @@ package Server;
 
 import Client.Client.ClientIDType;
 import Client.Organisation;
+import Shared.Message;
 import Shared.Packet;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;

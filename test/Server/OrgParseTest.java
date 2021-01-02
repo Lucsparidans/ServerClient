@@ -18,11 +18,15 @@ public class OrgParseTest {
             for (Object object :
                     Organisations) {
                 JSONObject org = (JSONObject) object;
-
+                parseOrg(org);
             }
             System.out.println();
         } catch (ParseException | IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static void parseOrg(JSONObject organisation){
+
     }
 }
