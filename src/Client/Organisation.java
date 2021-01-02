@@ -5,8 +5,8 @@ import Server.Message;
 import Shared.FileLogger;
 import Shared.Packet;
 import Shared.PacketLogger;
-import org.bouncycastle.util.Pack;
 import org.jetbrains.annotations.NotNull;
+import org.json.simple.JSONObject;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -61,20 +61,19 @@ public class Organisation implements Runnable{
             public String toString() {
                 return "Admin";
             }
-        };
-
+        }
     }
     private final HashMap<String, Role> clients = new HashMap<>();
     private final HashMap<String, Double> balances = new HashMap<>();
     private final LinkedBlockingQueue<Action> actions = new LinkedBlockingQueue<>();
 
-    public Organisation(String file) {
+    public Organisation(JSONObject organisation) {
         // TODO: GET ROLES FROM JSON
         pktLog = new PacketLogger();
         s = null;
         receivedMessages = new ArrayList<>();
         try {
-            parseJSON(file); //TODO: Parse the JSON file and extract fields
+            parseJSON(organisation); //TODO: Parse the JSON file and extract fields
             s = connectToServer(InetAddress.getLoopbackAddress(),PORT);
             LogMessage("Socket connected");
         } catch (InterruptedException e) {
@@ -124,11 +123,11 @@ public class Organisation implements Runnable{
         }
     }
 
-    private void parseJSON(String file) {
+    private void parseJSON(JSONObject file) {
         this.NAME = "BANK";
     }
 
-    private Socket connectToServer(InetAddress hostAddr, int port) throws InterruptedException {
+    private Socket connectToServer(@NotNull InetAddress hostAddr, int port) throws InterruptedException {
         Socket sock = null;
         while (sock == null) {
             // REGISTRATION
@@ -167,7 +166,6 @@ public class Organisation implements Runnable{
 
     @Override
     public void run() {
-
         while (running){
             // TODO: WAIT FOR MESSAGE AND EXECUTE ACTION IN THE MESSAGE
             LogMessage("Started client on thread: %s\n",Thread.currentThread().getName());
@@ -234,13 +232,17 @@ public class Organisation implements Runnable{
         //  Socket and streams need to closed as well (prevent memory leaks)
     }
 
+    public void shutdown(){
+        running = false;
+    }
+
     private void checkMessages(){
         try{
             // Request messages from the server for this client
             objectOutputStream.writeObject(pktLog.newOut(
                     new Packet(Packet.PacketType.MSG_REQUEST,
                             NAME,
-                            null,
+                            null,//TODO: id,
                             null,
                             null,
                             null,

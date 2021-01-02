@@ -30,13 +30,13 @@
 			],
 			"employees": [
 				{
-					"id": "", //TODO ADD
+					"id": "",
 					"roles": [
 						"Employee"
 					]
 				},
 				{
-					"id": "", //TODO ADD
+					"id": "",
 					"roles": [
 						"Employee",
 						"CEO"
