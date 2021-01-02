@@ -1,6 +1,7 @@
 package Server;
 
 import Client.Client.ClientIDType;
+import Shared.Message;
 import Shared.Packet;
 import Shared.Packet.PacketType;
 import Shared.PacketLogger;

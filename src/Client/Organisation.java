@@ -1,11 +1,12 @@
 package Client;
 
 import Server.Encryption;
-import Server.Message;
 import Shared.FileLogger;
+import Shared.Message;
 import Shared.Packet;
 import Shared.PacketLogger;
-import org.bouncycastle.util.Pack;
+import org.jetbrains.annotations.NotNull;
+import org.json.simple.JSONObject;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -60,20 +61,19 @@ public class Organisation implements Runnable{
             public String toString() {
                 return "Admin";
             }
-        };
-
+        }
     }
     private final HashMap<String, Role> clients = new HashMap<>();
     private final HashMap<String, Double> balances = new HashMap<>();
     private final LinkedBlockingQueue<Action> actions = new LinkedBlockingQueue<>();
 
-    public Organisation(String file) {
+    public Organisation(JSONObject organisation) {
         // TODO: GET ROLES FROM JSON
         pktLog = new PacketLogger();
         s = null;
         receivedMessages = new ArrayList<>();
         try {
-            parseJSON(file); //TODO: Parse the JSON file and extract fields
+            parseJSON(organisation); //TODO: Parse the JSON file and extract fields
             s = connectToServer(InetAddress.getLoopbackAddress(),PORT);
             LogMessage("Socket connected");
         } catch (InterruptedException e) {
@@ -123,11 +123,11 @@ public class Organisation implements Runnable{
         }
     }
 
-    private void parseJSON(String file) {
+    private void parseJSON(JSONObject file) {
         this.NAME = "BANK";
     }
 
-    private Socket connectToServer(InetAddress hostAddr, int port) throws InterruptedException {
+    private Socket connectToServer(@NotNull InetAddress hostAddr, int port) throws InterruptedException {
         Socket sock = null;
         while (sock == null) {
             // REGISTRATION
@@ -166,10 +166,11 @@ public class Organisation implements Runnable{
 
     @Override
     public void run() {
-
         while (running){
             // TODO: WAIT FOR MESSAGE AND EXECUTE ACTION IN THE MESSAGE
             LogMessage("Started client on thread: %s\n",Thread.currentThread().getName());
+            MessageHandler messageHandler = new MessageHandler();
+            ActionHandler actionHandler = new ActionHandler();
             long endTime;
             if(DEBUG){
                 endTime = System.currentTimeMillis() + Long.parseLong(this.duration);
@@ -177,14 +178,19 @@ public class Organisation implements Runnable{
             else{
                 endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 1000L;
             }
-            while(System.currentTimeMillis() < endTime){
-                // TODO: Consider the following: What is we made this method multithreaded as well in the sense that we
-                //  would at all times have one thread checking for messages and the other executing the actions that
-                //  the first extracted from the incoming messages.
 
-                checkMessages();
-                handleActions();
+            new Thread(messageHandler).start();
+            new Thread(actionHandler).start();
+
+            try{
+                Thread.sleep(endTime-System.currentTimeMillis());
+            }  catch (InterruptedException e){
+                e.printStackTrace();
             }
+
+            //ending message handler and action handler
+            messageHandler.end();
+            actionHandler.end();
 
             LogMessage("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
             socketClose();
@@ -197,15 +203,37 @@ public class Organisation implements Runnable{
 
     private void handleActions() {
         // TODO: Handle list of pending actions
-    }
-
-    private void handleTransactions() {
-        // TODO: Handle list of pending transactions
+        Action action = null;
+        try{
+           action = actions.take();
+        }
+        catch (InterruptedException e){
+            System.out.println("Interrupted Exception when handling action");
+        }
+        if(action.getType().equals("REGISTER")){
+            //register();
+        }
+        else if(action.getType().equals("ADD")){
+            boolean success = add(action.getFromID(), action.getToID(), Double.parseDouble(action.getMessageAsString()));
+            if(!success){
+                //TODO: SEND BACK A MESSAGE SAYING NOT ENOUGH BALANCE
+            }
+        }
+        else if(action.getType().equals("SUB")){
+            boolean success = sub(action.getFromID(), Double.parseDouble(action.getMessageAsString()));
+            if(!success){
+                //TODO: SEND BACK A MESSAGE SAYING NOT ENOUGH BALANCE
+            }
+        }
     }
 
     private void socketClose() {
         // TODO: Handle end of lifetime for this client or for the server
         //  Socket and streams need to closed as well (prevent memory leaks)
+    }
+
+    public void shutdown(){
+        running = false;
     }
 
     private void checkMessages(){
@@ -214,7 +242,7 @@ public class Organisation implements Runnable{
             objectOutputStream.writeObject(pktLog.newOut(
                     new Packet(Packet.PacketType.MSG_REQUEST,
                             NAME,
-                            null,
+                            null,//TODO: id,
                             null,
                             null,
                             null,
@@ -287,9 +315,8 @@ public class Organisation implements Runnable{
             amount = amount.replace("]", "");
             try {
                 this.actions.put(new Action(actionType, fromId, null, amount));
-            }
-            catch (InterruptedException e){
-                System.out.println("ERROR IN QUEUE");
+            } catch (InterruptedException e){
+                e.printStackTrace();
             }
         }
         else if(parts.length == 4){
@@ -303,40 +330,45 @@ public class Organisation implements Runnable{
             amount = amount.replace("]", "");
             try {
                 this.actions.put(new Action(actionType,fromId,toId,amount));
-            }
-            catch (InterruptedException e){
-                System.out.println("ERROR IN QUEUE");
+            } catch (InterruptedException e){
+                e.printStackTrace();
             }
         }
     }
 
-    private void add(String id, String fromAccount, String toAccount, double amount){
+    private boolean add(String fromAccount, String toAccount, double amount){
         if(checkAccountExist(fromAccount) && checkAccountExist(toAccount)) {
             if (amount >= balances.get(fromAccount)) {
                 double newBalanceSend = balances.get(fromAccount) - amount;
                 balances.replace(fromAccount, newBalanceSend);
                 double newBalanceRec = balances.get(toAccount) + amount;
                 balances.replace(toAccount, newBalanceRec);
+                return true;
             } else {
                 System.out.println("not enough cash");
+                return false;
             }
         }
         else{
             System.out.println("One of the two accounts does not exist");
+            return false;
         }
     }
 
-    private void sub(String id, String account, double amount){
+    private boolean sub(String account, double amount){
         if(checkAccountExist(account)) {
             if (amount >= balances.get(account)) {
                 double newBalance = balances.get(account) - amount;
                 balances.replace(account, newBalance);
+                return true;
             } else {
                 System.out.println("not enough cash");
+                return false;
             }
         }
         else{
             System.out.println("account does not exist");
+            return false;
         }
     }
 
@@ -364,6 +396,34 @@ public class Organisation implements Runnable{
             assert pIn.getType() == Packet.PacketType.RECEIVED_CONFIRM;
         }catch(IOException | ClassNotFoundException e){
             e.printStackTrace();
+        }
+    }
+
+    public class MessageHandler implements Runnable{
+        private boolean running;
+        @Override
+        public void run() {
+            running = true;
+            while(running) {
+                checkMessages();
+            }
+        }
+        public void end(){
+            running = false;
+        }
+    }
+
+    public class ActionHandler implements Runnable{
+        private boolean running;
+        @Override
+        public void run() {
+            running = true;
+            while(running) {
+                handleActions();
+            }
+        }
+        public void end(){
+            running = false;
         }
     }
 }

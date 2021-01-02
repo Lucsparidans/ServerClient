@@ -1,8 +1,15 @@
 package Server;
 
 import Client.Client.ClientIDType;
+import Client.Organisation;
+import Shared.Message;
 import Shared.Packet;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -20,7 +27,7 @@ public class Server {
     public static final InetAddress INET_ADDRESS = InetAddress.getLoopbackAddress();
     private static final int BACK_LOG = 5;
 
-    private static final int CLIENT_LIMIT = 4;
+    private static final int CLIENT_LIMIT = 10;
     private static final ArrayList<ClientHandler> SESSIONS = new ArrayList<>();
     private static final HashMap<ClientHandler, Thread> THREAD_BY_CLIENT = new HashMap<>();
     private static final HashMap<String, ArrayList<Message>> MSG_BY_ID = new HashMap<>();
@@ -29,11 +36,15 @@ public class Server {
     private static final ArrayList<String> ID_LIST = new ArrayList<>();
     private static final Object LOCK = new Object();
 
+    private static final String ORG_PATH = "src/JSON_files/organizations.json";
+    private static final ArrayList<Organisation> ORGS = new ArrayList<>();
+
     public static void main(String[] args) {
         // TODO: close socket when client disconnects
         LogMessage(INET_ADDRESS);
         try {
             ServerSocket ss = new ServerSocket(PORT,BACK_LOG,INET_ADDRESS);
+            initializeOrganisations(ORG_PATH);
             while (!ss.isClosed()) {
                 // TODO: create method to shutdown (all) threads
                 if(SESSIONS.size() < CLIENT_LIMIT){
@@ -48,6 +59,7 @@ public class Server {
         }catch (IOException e) {
             e.printStackTrace();
         }
+        ORGS.forEach(Organisation::shutdown);
     }
 
     /**
@@ -168,6 +180,24 @@ public class Server {
             }
         }
     }
+    private static void initializeOrganisations(String path){
+        JSONParser jsonParser = new JSONParser();
+        try{
+            JSONObject data = (JSONObject) jsonParser.parse(new FileReader(ORG_PATH));
+            JSONArray Organisations = (JSONArray) data.get("Organizations");
+            for (Object object :
+                    Organisations) {
+                JSONObject org = (JSONObject) object;
+                Organisation organisation = new Organisation(org);
+                ORGS.add(organisation);
+                new Thread(organisation).start();
+            }
+            System.out.println();
+        } catch (ParseException | IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static boolean isInDataBase(String data, ClientIDType type){
         synchronized (LOCK) {
             if (type == ClientIDType.NAME) {
