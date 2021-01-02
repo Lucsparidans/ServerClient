@@ -18,8 +18,11 @@
 		"port": "13370"
 	},
 	"actions": [
-		"SEND [EIFERT, THOMAS] [HELLO THOMAS]",
-        "SEND [6398C613619E4DCA88220ACA49603D87] [HELLO THOMAS 2]",
-        "SEND [DOE, JOHN] [HELLO JOHN]"
-		]
+		"SEND [Bank] REGISTER [10000]",
+		"SEND [Bank] CLOCKS IN",
+		"SEND [Bank] SUB [Bank] [10000]",
+		"SEND [Bank] CLOCKS OUT",
+		"SEND [Bank] SUB [Bank] [40000]",
+		"SEND [Bank] SUB [5856e6cd-0da6-4573-9a04-cbb11f5e68d3] [500]"
+	]
 }

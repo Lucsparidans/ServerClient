@@ -5,14 +5,13 @@
 			"balance": "100000",
 			"roles": [
 				"Employee",
-				"CEO"
+				"Admin"
 			],
 			"employees": [
 				{
 					"id": "5856e6cd-0da6-4573-9a04-cbb11f5e68d3",
 					"roles": [
-						"Employee",
-						"CEO"
+						"Admin"
 					]
 				},
 				{
@@ -28,7 +27,7 @@
 			"balance": "100000",
 			"roles": [
 				"Employee",
-				"CEO"
+				"Admin"
 			],
 			"employees": [
 				{
@@ -40,8 +39,7 @@
 				{
 					"id": "2QZ86KFLRUX2W7PMXBUY2NKCEX3D4ZJY",
 					"roles": [
-						"Employee",
-						"CEO"
+						"Admin"
 					]
 				}
 			]

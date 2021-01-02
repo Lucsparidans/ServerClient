@@ -6,6 +6,7 @@ import Shared.Message;
 import Shared.Packet;
 import Shared.PacketLogger;
 import org.jetbrains.annotations.NotNull;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import java.io.IOException;
@@ -37,11 +38,12 @@ public class Organisation implements Runnable{
 
     private boolean running;
     private static final int PORT = 4444;
-    private static String NAME;
+    private String name;
     private String duration;
 
     private String privateKey;
     private String publicKey;
+    private Double balance;
 
     public enum Role{
         CUSTOMER {
@@ -123,8 +125,17 @@ public class Organisation implements Runnable{
         }
     }
 
-    private void parseJSON(JSONObject file) {
-        this.NAME = "BANK";
+    private void parseJSON(JSONObject org) {
+        this.balance = Double.parseDouble((String) org.get("balance"));
+        JSONArray roles = (JSONArray) org.get("roles");
+        this.name = (String) org.get("name");
+        JSONArray employees = (JSONArray) org.get("employees");
+
+        for (Object o :
+                employees) {
+            JSONObject empl = (JSONObject) o;
+        }
+
     }
 
     private Socket connectToServer(@NotNull InetAddress hostAddr, int port) throws InterruptedException {
@@ -197,7 +208,7 @@ public class Organisation implements Runnable{
 
             // Print all logged packets
             FileLogger.writeLogToFile(pktLog.getLoggedSequence());
-            FileLogger.writeMessagesToFile(receivedMessages,NAME);
+            FileLogger.writeMessagesToFile(receivedMessages,name);
         }
     }
 
@@ -241,7 +252,7 @@ public class Organisation implements Runnable{
             // Request messages from the server for this client
             objectOutputStream.writeObject(pktLog.newOut(
                     new Packet(Packet.PacketType.MSG_REQUEST,
-                            NAME,
+                            name,
                             null,//TODO: id,
                             null,
                             null,

@@ -27,6 +27,9 @@ public class OrgParseTest {
     }
 
     private static void parseOrg(JSONObject organisation){
-
+        Double balance = Double.parseDouble((String) organisation.get("balance"));
+        JSONArray roles = (JSONArray) organisation.get("roles");
+        String name = (String) organisation.get("name");
+        JSONArray employees = (JSONArray) organisation.get("employees");
     }
 }
