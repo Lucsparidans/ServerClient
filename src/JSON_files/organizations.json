@@ -2,6 +2,7 @@
 	"Organizations": [
 		{
 			"name": "Bank",
+			"balance": "100000",
 			"roles": [
 				"Employee",
 				"CEO"
@@ -24,19 +25,20 @@
 		},
 		{
 			"name": "Company",
+			"balance": "100000",
 			"roles": [
 				"Employee",
 				"CEO"
 			],
 			"employees": [
 				{
-					"id": "", //TODO ADD
+					"id": "BGWZTGL32D2V3JPFE3ETJA3T3EDPQUDB",
 					"roles": [
 						"Employee"
 					]
 				},
 				{
-					"id": "", //TODO ADD
+					"id": "2QZ86KFLRUX2W7PMXBUY2NKCEX3D4ZJY",
 					"roles": [
 						"Employee",
 						"CEO"
