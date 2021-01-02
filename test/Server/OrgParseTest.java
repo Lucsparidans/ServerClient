@@ -1,5 +1,6 @@
 package Server;
 
+import Client.Organisation;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -31,5 +32,13 @@ public class OrgParseTest {
         JSONArray roles = (JSONArray) organisation.get("roles");
         String name = (String) organisation.get("name");
         JSONArray employees = (JSONArray) organisation.get("employees");
+
+        for (Object o :
+                employees) {
+            JSONObject empl = (JSONObject) o;
+            System.out.println(Organisation.Role.valueOf(((JSONArray)empl.get("roles")).get(0).toString().toUpperCase()));
+           // JSONArray object = ((JSONArray)empl.get("roles")).get("roles");
+            System.out.println();
+        }
     }
 }

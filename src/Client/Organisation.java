@@ -90,28 +90,28 @@ public class Organisation implements Runnable{
             LogMessage("Start clientside verification");
             System.out.println();
             while (!verified) {
-//                objectOutputStream.writeObject(pktLog.newOut(
-//                        new Packet(Packet.PacketType.SYN,
-//                                id,
-//                                null,
-//                                null,
-//                                name.split(" ")[0].toUpperCase(),
-//                                name.split(" ")[1].toUpperCase(),
-//                                publicKey)));
+                objectOutputStream.writeObject(pktLog.newOut(
+                        new Packet(Packet.PacketType.SYN,
+                                name,
+                                null,
+                                null,
+                                null,
+                                null,
+                                publicKey)));
                 Packet p = pktLog.newIn(objectInputStream.readObject());
                 if (p != null) {
                     if (p.getType() == Packet.PacketType.ACK) {
                         verified = true;
-//                        objectOutputStream.writeObject(pktLog.newOut(
-//                                new Packet(
-//                                        Packet.PacketType.SYN_ACK,
-//                                        id,
-//                                        null,
-//                                        null,
-//                                        name.split(" ")[0].toUpperCase(),
-//                                        name.split(" ")[1].toUpperCase(),
-//                                        publicKey
-//                                )));
+                        objectOutputStream.writeObject(pktLog.newOut(
+                                new Packet(
+                                        Packet.PacketType.SYN_ACK,
+                                        name,
+                                        null,
+                                        null,
+                                        name.split(" ")[0].toUpperCase(),
+                                        name.split(" ")[1].toUpperCase(),
+                                        publicKey
+                                )));
                     }
                     p = pktLog.newIn(objectInputStream.readObject());
                     if(p.getType() == Packet.PacketType.RECEIVED_CONFIRM) System.out.println("ACK");
@@ -134,8 +134,9 @@ public class Organisation implements Runnable{
         for (Object o :
                 employees) {
             JSONObject empl = (JSONObject) o;
+            clients.put((String)empl.get("id"),
+                    Role.valueOf(((JSONArray)empl.get("roles")).get(0).toString().toUpperCase()));
         }
-
     }
 
     private Socket connectToServer(@NotNull InetAddress hostAddr, int port) throws InterruptedException {
@@ -216,7 +217,7 @@ public class Organisation implements Runnable{
         // TODO: Handle list of pending actions
         Action action = null;
         try{
-           action = actions.take();
+            action = actions.take();
         }
         catch (InterruptedException e){
             System.out.println("Interrupted Exception when handling action");
