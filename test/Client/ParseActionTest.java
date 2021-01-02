@@ -10,7 +10,7 @@ public class ParseActionTest {
     }
 
     private static void parseAction(String action){
-        String[] parts = action.toString().split("\\[");
+        String[] parts = action.split("\\[");
         System.out.println(parts.length);
         String actionType = parts[0];
         actionType = actionType.replace(" ", "");

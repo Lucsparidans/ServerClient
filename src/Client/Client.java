@@ -204,17 +204,22 @@ public class Client implements Runnable{
 
     private void parseActions(JSONArray actions){
         for (Object action : actions) {
-
-            String[] parts = action.toString().split("\\[", 3);
-
+            String[] parts = action.toString().split(" ", 2);
             String actionType = parts[0];
-            actionType = actionType.replace(" ", "");
+            actionType = actionType.trim();
 
-            String toId = parts[1];
-            toId = toId.replace("] ", "");
+            String[] p2 = parts[1].split("]",2);
 
-            String m = parts[2];
-            m = m.replace("]", "");
+            String toId = p2[0];
+            toId = toId.replace("[", "").trim();
+
+            String m = p2[1];
+
+            if(p2[1].charAt(1) == '['){
+                m = m.replace("[","");
+                m = m.replace("]","");
+            }
+            m = m.trim();
 
             this.actions.add(new Action(actionType,toId,m));
         }

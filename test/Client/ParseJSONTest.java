@@ -17,10 +17,25 @@ public class ParseJSONTest {
         for (String s :
                 actions) {
             String[] parts = s.split(" ", 2);
-            String[] p2 = parts[1].split("]",2);
-            System.out.println(p2[1].charAt(1) == '[');
-            System.out.println();
+            String actionType = parts[0];
+            actionType = actionType.trim();
 
+            String[] p2 = parts[1].split("]",2);
+
+            String toId = p2[0];
+            toId = toId.replace("[", "").trim();
+
+            String m = p2[1];
+
+            if(p2[1].charAt(1) == '['){
+                m = m.replace("[","");
+                m = m.replace("]","");
+                System.out.println("NOrg");
+            }else{
+                System.out.println("Org");
+            }
+            m = m.trim();
+            System.out.printf("ActionType: %s, toID: %s, Message: %s\n",actionType,toId,m);
         }
     }
 }
