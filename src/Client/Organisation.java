@@ -6,6 +6,7 @@ import Shared.FileLogger;
 import Shared.Packet;
 import Shared.PacketLogger;
 import org.bouncycastle.util.Pack;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -170,6 +171,8 @@ public class Organisation implements Runnable{
         while (running){
             // TODO: WAIT FOR MESSAGE AND EXECUTE ACTION IN THE MESSAGE
             LogMessage("Started client on thread: %s\n",Thread.currentThread().getName());
+            MessageHandler messageHandler = new MessageHandler();
+            ActionHandler actionHandler = new ActionHandler();
             long endTime;
             if(DEBUG){
                 endTime = System.currentTimeMillis() + Long.parseLong(this.duration);
@@ -182,9 +185,15 @@ public class Organisation implements Runnable{
                 //  would at all times have one thread checking for messages and the other executing the actions that
                 //  the first extracted from the incoming messages.
 
-                checkMessages();
-                handleActions();
+                // nested classes, one message, one action, join at end
+                messageHandler.run();
+                actionHandler.run();
             }
+
+            //ending message handler and action handler
+            messageHandler.end();
+            actionHandler.end();
+            // TODO: JOIN THREADS
 
             LogMessage("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
             socketClose();
@@ -197,10 +206,28 @@ public class Organisation implements Runnable{
 
     private void handleActions() {
         // TODO: Handle list of pending actions
-    }
-
-    private void handleTransactions() {
-        // TODO: Handle list of pending transactions
+        Action action = null;
+        try{
+           action = actions.take();
+        }
+        catch (InterruptedException e){
+            System.out.println("Interrupted Exception when handling action");
+        }
+        if(action.getType().equals("REGISTER")){
+            //register();
+        }
+        else if(action.getType().equals("ADD")){
+            boolean success = add(action.getFromID(), action.getToID(), Double.parseDouble(action.getMessageAsString()));
+            if(!success){
+                //TODO: SEND BACK A MESSAGE SAYING NOT ENOUGH BALANCE
+            }
+        }
+        else if(action.getType().equals("SUB")){
+            boolean success = sub(action.getFromID(), Double.parseDouble(action.getMessageAsString()));
+            if(!success){
+                //TODO: SEND BACK A MESSAGE SAYING NOT ENOUGH BALANCE
+            }
+        }
     }
 
     private void socketClose() {
@@ -310,33 +337,39 @@ public class Organisation implements Runnable{
         }
     }
 
-    private void add(String id, String fromAccount, String toAccount, double amount){
+    private boolean add(String fromAccount, String toAccount, double amount){
         if(checkAccountExist(fromAccount) && checkAccountExist(toAccount)) {
             if (amount >= balances.get(fromAccount)) {
                 double newBalanceSend = balances.get(fromAccount) - amount;
                 balances.replace(fromAccount, newBalanceSend);
                 double newBalanceRec = balances.get(toAccount) + amount;
                 balances.replace(toAccount, newBalanceRec);
+                return true;
             } else {
                 System.out.println("not enough cash");
+                return false;
             }
         }
         else{
             System.out.println("One of the two accounts does not exist");
+            return false;
         }
     }
 
-    private void sub(String id, String account, double amount){
+    private boolean sub(String account, double amount){
         if(checkAccountExist(account)) {
             if (amount >= balances.get(account)) {
                 double newBalance = balances.get(account) - amount;
                 balances.replace(account, newBalance);
+                return true;
             } else {
                 System.out.println("not enough cash");
+                return false;
             }
         }
         else{
             System.out.println("account does not exist");
+            return false;
         }
     }
 
@@ -364,6 +397,32 @@ public class Organisation implements Runnable{
             assert pIn.getType() == Packet.PacketType.RECEIVED_CONFIRM;
         }catch(IOException | ClassNotFoundException e){
             e.printStackTrace();
+        }
+    }
+
+    public class MessageHandler implements Runnable{
+        private boolean running = true;
+        @Override
+        public void run() {
+            while(running) {
+                checkMessages();
+            }
+        }
+        public void end(){
+            running = false;
+        }
+    }
+
+    public class ActionHandler implements Runnable{
+        private boolean running = true;
+        @Override
+        public void run() {
+            while(running) {
+                handleActions();
+            }
+        }
+        public void end(){
+            running = false;
         }
     }
 }

@@ -12,7 +12,7 @@ public class Action {
         this.message = message;
     }
 
-    public Action(String type, String fromID, String toID,String message){
+    public Action(String type, String fromID, String toID, String message){
         this(type,toID,message);
         this.fromID = fromID;
     }
@@ -28,4 +28,6 @@ public class Action {
     public String getType() {
         return type;
     }
+
+    public String getFromID(){return fromID;}
 }
