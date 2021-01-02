@@ -180,20 +180,19 @@ public class Organisation implements Runnable{
             else{
                 endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 1000L;
             }
-            while(System.currentTimeMillis() < endTime){
-                // TODO: Consider the following: What is we made this method multithreaded as well in the sense that we
-                //  would at all times have one thread checking for messages and the other executing the actions that
-                //  the first extracted from the incoming messages.
 
-                // nested classes, one message, one action, join at end
-                messageHandler.run();
-                actionHandler.run();
+            new Thread(messageHandler).start();
+            new Thread(actionHandler).start();
+
+            try{
+                Thread.sleep(endTime-System.currentTimeMillis());
+            }  catch (InterruptedException e){
+                e.printStackTrace();
             }
 
             //ending message handler and action handler
             messageHandler.end();
             actionHandler.end();
-            // TODO: JOIN THREADS
 
             LogMessage("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
             socketClose();
@@ -314,9 +313,8 @@ public class Organisation implements Runnable{
             amount = amount.replace("]", "");
             try {
                 this.actions.put(new Action(actionType, fromId, null, amount));
-            }
-            catch (InterruptedException e){
-                System.out.println("ERROR IN QUEUE");
+            } catch (InterruptedException e){
+                e.printStackTrace();
             }
         }
         else if(parts.length == 4){
@@ -330,9 +328,8 @@ public class Organisation implements Runnable{
             amount = amount.replace("]", "");
             try {
                 this.actions.put(new Action(actionType,fromId,toId,amount));
-            }
-            catch (InterruptedException e){
-                System.out.println("ERROR IN QUEUE");
+            } catch (InterruptedException e){
+                e.printStackTrace();
             }
         }
     }
@@ -401,9 +398,10 @@ public class Organisation implements Runnable{
     }
 
     public class MessageHandler implements Runnable{
-        private boolean running = true;
+        private boolean running;
         @Override
         public void run() {
+            running = true;
             while(running) {
                 checkMessages();
             }
@@ -414,9 +412,10 @@ public class Organisation implements Runnable{
     }
 
     public class ActionHandler implements Runnable{
-        private boolean running = true;
+        private boolean running;
         @Override
         public void run() {
+            running = true;
             while(running) {
                 handleActions();
             }
