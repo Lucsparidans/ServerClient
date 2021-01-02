@@ -345,7 +345,6 @@ public class Client implements Runnable{
 
     }
     private void checkMessages(){
-        // TODO: Send a packet to confirm receiving a packet for all incoming packets
         try{
             // Request messages from the server for this client
             objectOutputStream.writeObject(pktLog.newOut(

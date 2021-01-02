@@ -1,8 +1,11 @@
 package Client;
 
+import Server.Encryption;
+import Server.Message;
 import Shared.FileLogger;
 import Shared.Packet;
 import Shared.PacketLogger;
+import org.bouncycastle.util.Pack;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -11,7 +14,9 @@ import java.io.ObjectOutputStream;
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 
 import static Shared.ConsoleLogger.LogMessage;
@@ -34,6 +39,8 @@ public class Organisation implements Runnable{
     private static String NAME;
     private String duration;
 
+    private String privateKey;
+    private String publicKey;
 
     public enum Role{
         CUSTOMER {
@@ -56,8 +63,7 @@ public class Organisation implements Runnable{
         };
 
     }
-    private final HashMap<String, Role> employees = new HashMap<>();
-    //TODO: ADD GOOD VERIFICATION
+    private final HashMap<String, Role> clients = new HashMap<>();
     private final HashMap<String, Double> balances = new HashMap<>();
 
     public Organisation(String file) {
@@ -68,8 +74,6 @@ public class Organisation implements Runnable{
         try {
             parseJSON(file); //TODO: Parse the JSON file and extract fields
             s = connectToServer(InetAddress.getLoopbackAddress(),PORT);
-            register();
-            verification();
             LogMessage("Socket connected");
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -140,6 +144,7 @@ public class Organisation implements Runnable{
 
     private void register(){
         // TODO: IO and exchange certs
+
     }
 
     private void verification(){
@@ -165,7 +170,7 @@ public class Organisation implements Runnable{
                 //  the first extracted from the incoming messages.
 
                 checkMessages();
-                handleTransactions();
+                handleActions();
             }
 
             LogMessage("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
@@ -177,6 +182,10 @@ public class Organisation implements Runnable{
         }
     }
 
+    private void handleActions() {
+        // TODO: Handle list of pending actions
+    }
+
     private void handleTransactions() {
         // TODO: Handle list of pending transactions
     }
@@ -186,8 +195,61 @@ public class Organisation implements Runnable{
         //  Socket and streams need to closed as well (prevent memory leaks)
     }
 
-    private void checkMessages() {
-        // TODO: Ask the server whether there are any incoming messages stored for this organisation
+    private void checkMessages(){
+        try{
+            // Request messages from the server for this client
+            objectOutputStream.writeObject(pktLog.newOut(
+                    new Packet(Packet.PacketType.MSG_REQUEST,
+                            id,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null)
+            ));
+            Packet conf = pktLog.newIn(objectInputStream.readObject());
+            if(conf.getType() != Packet.PacketType.RECEIVED_CONFIRM){
+                // TODO: Handle!
+            }
+            // Response from server
+            Packet p = pktLog.newIn(objectInputStream.readObject());
+            // Send confirmation of receiving the message
+            objectOutputStream.writeObject(pktLog.newOut(new Packet(
+                    Packet.PacketType.RECEIVED_CONFIRM,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+            )));
+            if(p.getType() != Packet.PacketType.NO_MSGs) {
+                Object o = p.getData();
+                String t = new SimpleDateFormat("dd-MM-yyyy,HH:mm").format(new Date());
+                if(o instanceof String){
+                    String message = t + "-> " + Encryption.decrypt(this.privateKey,(String)o);
+                    receivedMessages.add(message);
+                    object = parseAction();
+                    LogMessage("Message %s\n", message);
+
+                }else if(o instanceof Message){
+                    String message = t + "-> " + Encryption.decrypt(this.privateKey,((Message) o).getMessage());
+                    receivedMessages.add(message);
+                    LogMessage("Message %s\n", Encryption.decrypt(this.privateKey,((Message) o).getMessage()));
+
+                }else if(o instanceof ArrayList){
+                    ArrayList<?> messages = (ArrayList<?>) o;
+                    for (Object message : messages) {
+                        Message m = (Message) message;
+                        String decryptedMessage = t + "-> " + Encryption.decrypt(this.privateKey,m.getMessage());
+                        receivedMessages.add(decryptedMessage);
+                        LogMessage("Message %s\n", decryptedMessage);
+                    }
+                }
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
 

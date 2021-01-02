@@ -27,6 +27,7 @@ public class Packet implements Serializable {
     private String firstName;
     private String lastName;
     private String publicKey;
+    private String certificate;
 
     // endregion
 
@@ -38,6 +39,12 @@ public class Packet implements Serializable {
         this.firstName = firstName;
         this.lastName = lastName;
         this.publicKey = publicKey;
+        this.certificate = null;
+    }
+
+    public Packet(PacketType type, String senderID, String destID, Object data,String firstName, String lastName, String publicKey, String certificate) {
+        this(type,senderID,destID,data,firstName,lastName,publicKey);
+        this.certificate = certificate;
     }
 
     @Override
@@ -82,6 +89,14 @@ public class Packet implements Serializable {
 
     public Object getData() {
         return data;
+    }
+
+    public String getCertificate() {
+        return certificate;
+    }
+
+    public void setCertificate(String certificate) {
+        this.certificate = certificate;
     }
 
     public void setData(Object data) {
