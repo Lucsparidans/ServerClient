@@ -20,6 +20,8 @@
 	"actions": [
 		"SEND [Bank] REGISTER [10000]",
 		"SEND [Bank] CHECK-IN",
+		"SEND [BGWZTGL32D2V3JPFE3ETJA3T3EDPQUDB] [Let's steal some money from this bank!]",
+		"SEND [6RHWRU97QJDA4V5GTGNHVSX3CXBN5PDV] [Let's steal some money from this bank!]",
 		"SEND [Bank] ADD [Bank] [2QZ86KFLRUX2W7PMXBUY2NKCEX3D4ZJY] [50000]",
 		"SEND [Bank] CHECK-OUT",
 		"SEND [Bank] SUB [2QZ86KFLRUX2W7PMXBUY2NKCEX3D4ZJY] [10000]"

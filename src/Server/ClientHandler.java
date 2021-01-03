@@ -53,7 +53,6 @@ public class ClientHandler implements Runnable {
             ioException.printStackTrace();
         }
         while (active) {
-            // TODO: For each packet received send confirmation to client
             Packet p = receiveFromClient();
             // Consider situation in which p = null?
             boolean success;
@@ -97,8 +96,6 @@ public class ClientHandler implements Runnable {
                     if (Server.isInDataBase(idString, idType)) {
                         success = Server.sendMessage(p);
                         if (!success) {
-                            // TODO: Handle the situation in which an attempt was made to send a message to another
-                            //  user through the server but it failed
                             LogMessage("Failed to send message or receive confirmation");
                         }else{
                             sendToClient(RECEIVED_CONFIRM); // Acknowledge the message was successfully sent to another user
@@ -160,8 +157,6 @@ public class ClientHandler implements Runnable {
                     Server.close(this);
                     break;
                 default:
-                    // TODO: Implement some error resolving method for this situation
-                    //  (Also check whether it will every get here)
                     LogMessage("Something went wrong! Unhandled PacketType was received in ClientHandler");
                     break;
             }
@@ -183,7 +178,6 @@ public class ClientHandler implements Runnable {
         if(messages != null) {
             try {
                 // Send array of messages in one packet to the client and wait for confirmation of receiving
-                // TODO: Encrypt the data in the messages
                 OOS.writeObject(packetLogger.newOut(new Packet(
                                 MSG,
                                 null,
@@ -275,7 +269,7 @@ public class ClientHandler implements Runnable {
      */
     private void register() throws IOException, ClassNotFoundException {
         Packet p = receiveFromClient();
-        assert p != null; // TODO: Find an alternative for this
+        assert p != null;
         if (p.getType() == SYN) {
             boolean req = Server.register(p); // You need the public static access here
             if (req) {

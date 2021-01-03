@@ -16,16 +16,17 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Scanner;
 
 import static Shared.ConsoleLogger.LogMessage;
 
 public class Server {
 
-    // TODO: Add locked synchronisation for data structure
-
     public static final int PORT = 4444;
     public static final InetAddress INET_ADDRESS = InetAddress.getLoopbackAddress();
     private static final int BACK_LOG = 5;
+    private static ServerSocket ss;
+    private static int clientCount = 0;
 
     private static final int CLIENT_LIMIT = 10;
     private static final ArrayList<ClientHandler> SESSIONS = new ArrayList<>();
@@ -37,29 +38,30 @@ public class Server {
     private static final Object LOCK = new Object();
 
     private static final String ORG_PATH = "src/JSON_files/organizations.json";
+    private static final ArrayList<Thread> ORG_THREADS = new ArrayList<>();
     private static final ArrayList<Organisation> ORGS = new ArrayList<>();
 
     public static void main(String[] args) {
-        // TODO: close socket when client disconnects
         LogMessage(INET_ADDRESS);
         try {
-            ServerSocket ss = new ServerSocket(PORT,BACK_LOG,INET_ADDRESS);
-            new Thread(new InitOrgs()).start();
+            ss = new ServerSocket(PORT,BACK_LOG,INET_ADDRESS);
+            new Thread(new InitOrgs(),"InitOrgs").start();
+            new Thread(new InputHandler(),"InputHandler").start();
             while (!ss.isClosed()) {
-                // TODO: create method to shutdown (all) threads
                 if(SESSIONS.size() < CLIENT_LIMIT){
                     Socket socket = ss.accept();
                     ClientHandler clientHandler = new ClientHandler(socket);
                     SESSIONS.add(clientHandler);
-                    Thread thread = new Thread(clientHandler);
+                    Thread thread = new Thread(clientHandler,String.format("Client_%s",++clientCount));
                     THREAD_BY_CLIENT.put(clientHandler,thread);
                     thread.start();
                 }
             }
         }catch (IOException e) {
-            e.printStackTrace();
+            LogMessage(e.getMessage());
+        }finally {
+            LogMessage("Server closing!");
         }
-        ORGS.forEach(Organisation::shutdown);
     }
 
     /**
@@ -108,7 +110,6 @@ public class Server {
 
     public static boolean sendMessage(Packet pkt) {
         synchronized (LOCK) {
-            // TODO: Check whether the sender is registered??
             if (pkt.getDestID() != null) {
                 if (ID_LIST.contains(pkt.getDestID())) {
                     // ID is registered
@@ -175,7 +176,6 @@ public class Server {
                 }
             } else {
                 // Something went wrong!
-                // TODO: Handle this without throwing an exception
                 throw new IllegalStateException("Sending packet without destination!");
             }
         }
@@ -190,7 +190,9 @@ public class Server {
                 JSONObject org = (JSONObject) object;
                 Organisation organisation = new Organisation(org);
                 ORGS.add(organisation);
-                new Thread(organisation).start();
+                Thread th = new Thread(organisation,String.format("Org_%d",Organisations.indexOf(object)));
+                ORG_THREADS.add(th);
+                th.start();
             }
             System.out.println();
         } catch (ParseException | IOException e) {
@@ -204,6 +206,7 @@ public class Server {
             initializeOrganisations();
         }
     }
+
     public static boolean isInDataBase(String data, ClientIDType type){
         synchronized (LOCK) {
             if (type == ClientIDType.NAME) {
@@ -227,6 +230,35 @@ public class Server {
     public static String nameToID(String fullName) {
         synchronized (LOCK) {
             return NAME_TO_ID.get(fullName);
+        }
+    }
+
+    private static void close(){
+        ORGS.forEach(Organisation::shutdown);
+        ORG_THREADS.forEach(thread -> {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+        SESSIONS.forEach(ClientHandler::kill);
+        try {
+            ss.close();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+    }
+
+    private static class InputHandler implements Runnable {
+        @Override
+        public void run() {
+            Scanner scanner = new Scanner(System.in);
+            String EXIT = "";
+            while (!EXIT.equals("Quit")){
+                EXIT = scanner.next().trim();
+            }
+            close();
         }
     }
 }

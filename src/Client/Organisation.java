@@ -1,8 +1,6 @@
 package Client;
 
-import Server.Encryption;
 import Shared.*;
-
 import org.jetbrains.annotations.NotNull;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -19,8 +17,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
-import static Server.Encryption.*;
+import static Server.Encryption.decrypt;
+import static Server.Encryption.encrypt;
 import static Shared.ConsoleLogger.LogMessage;
 import static Shared.Packet.PacketType.RECEIVED_CONFIRM;
 
@@ -34,6 +34,9 @@ public class Organisation implements Runnable{
 
     private ObjectInputStream objectInputStream;
     private ObjectOutputStream objectOutputStream;
+
+    private MessageHandler messageHandler;
+    private ActionHandler actionHandler;
 
     private Socket s;
 
@@ -74,16 +77,14 @@ public class Organisation implements Runnable{
     private final LinkedBlockingQueue<Action> actions = new LinkedBlockingQueue<>();
 
     public Organisation(JSONObject organisation) {
-        // TODO: GET ROLES FROM JSON
         pktLog = new PacketLogger();
         s = null;
         receivedMessages = new ArrayList<>();
         KeyPairB64 keyPairB64 = KeyPairGenerator.generateRSAKeyPair();
         privateKey = keyPairB64.getPrivateKey();
         publicKey = keyPairB64.getPublicKey();
-
         try {
-            parseJSON(organisation); //TODO: Parse the JSON file and extract fields
+            parseJSON(organisation);
             s = connectToServer(InetAddress.getLoopbackAddress(),PORT);
             LogMessage("Socket connected");
         } catch (InterruptedException e) {
@@ -95,7 +96,7 @@ public class Organisation implements Runnable{
             objectOutputStream = new ObjectOutputStream(s.getOutputStream());
 
             boolean verified = false;
-            LogMessage("ORG: Start clientside verification");
+            LogMessage("Start clientside verification");
             System.out.println();
             while (!verified) {
                 objectOutputStream.writeObject(pktLog.newOut(
@@ -189,10 +190,8 @@ public class Organisation implements Runnable{
     }
 
     private void register(String id, Double amount){
-        // TODO: IO and exchange certs
         if(!balances.containsKey(id)){
             balances.put(id, amount);
-            // TODO: always need a new certificate
             if(!clients.containsKey(id)){
                 clients.put(id, Role.CUSTOMER);
                 sendPacket(new Packet(Packet.PacketType.MSG,
@@ -225,31 +224,18 @@ public class Organisation implements Runnable{
         }
     }
 
-    private boolean verification(Packet packet){
-        // TODO: Verify cert and the permission it grants
-        if(packet.getCertificate()!= null){
-            String decryptCert = decrypt(privateKey, packet.getCertificate());
-            if(decryptCert.equals(clients.get(packet.getSenderID()).toString())){
-                return true;
-            }
-            else {
-                return false;
-            }
-        }
-        else{
-            return false;
-        }
-    }
-
     @Override
     public void run() {
         running = true;
         LogMessage("Started client on thread: %s\n",Thread.currentThread().getName());
-        MessageHandler messageHandler = new MessageHandler();
-        ActionHandler actionHandler = new ActionHandler();
+        messageHandler = new MessageHandler();
+        actionHandler = new ActionHandler();
 
-        new Thread(messageHandler).start();
-        new Thread(actionHandler).start();
+        Thread tm = new Thread(messageHandler,String.format("%s_MessageHandler",Thread.currentThread().getName()));
+        Thread ta = new Thread(actionHandler,String.format("%s_ActionHandler",Thread.currentThread().getName()));
+
+        tm.start();
+        ta.start();
 
         while (running){
             // Threads are doing stuff
@@ -264,76 +250,164 @@ public class Organisation implements Runnable{
         messageHandler.end();
         actionHandler.end();
 
+        // Waiting for the worker threads to die before shutting down the streams
+        try{
+            ta.join();
+            tm.join();
+        }catch (InterruptedException e){
+            e.printStackTrace();
+        }
+
         LogMessage("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
         socketClose();
 
         // Print all logged packets
-        FileLogger.writeLogToFile(pktLog.getLoggedSequence());
-        FileLogger.writeMessagesToFile(receivedMessages,name);
-
+        //FileLogger.writeLogToFile(pktLog.getLoggedSequence());
     }
 
     private void handleActions() {
-        // TODO: Handle list of pending actions
         Action action = null;
-        try{
-            action = actions.take();
+        try {
+            action = this.actions.poll(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
-        catch (InterruptedException e){
-            System.out.println("Interrupted Exception when handling action");
-        }
-        if(action.getType().equals("REGISTER")){
-            register(action.getFromID(), Double.parseDouble(action.getMessageAsString()));
-        }
-        else if(action.getType().equals("ADD")){
-            int success = add(action.getFromID(), action.getToID(), Double.parseDouble(action.getMessageAsString()));
-            if(success != 0){
-                String error;
-                if (success == 1)
-                    error = "ERROR: NOT ENOUGH CASH";
-                else
-                    error = "ERROR: USER DOES NOT HAVE ACCOUNT";
+        if(action == null)
+            return;
+        switch (action.getType()) {
+            case "REGISTER":
+                register(action.getSenderID(), Double.parseDouble(action.getMessageAsString()));
+                break;
+            case "ADD": {
+                int success = add(action, Double.parseDouble(action.getMessageAsString()));
+                if (success != 0) {
+                    String error;
+                    if (success == 1)
+                        error = "ERROR: NOT ENOUGH CASH";
+                    else if(success == 2)
+                        error = "ERROR: USER DOES NOT HAVE ACCOUNT";
+                    else
+                        error = "ERROR: NO PERMISSION";
+                    sendPacket(new Packet(Packet.PacketType.MSG,
+                            name,
+                            action.getSenderID(),
+                            encrypt(requestPrivateKey(action.getSenderID()), String.format("%s -> %s\n", error, action.toString())),
+                            null,
+                            null,
+                            null
+                    ));
+                    Packet p = receivePacket();
+                    if (p.getType() != RECEIVED_CONFIRM) {
+                        // Do something
+                    }
+                }
+                break;
+            }
+            case "SUB": {
+                int success = sub(action, Double.parseDouble(action.getMessageAsString()));
+                if (success != 0) {
+                    String error;
+                    if (success == 1)
+                        error = "ERROR: NOT ENOUGH CASH";
+                    else if(success == 2)
+                        error = "ERROR: USER DOES NOT HAVE ACCOUNT";
+                    else
+                        error = "ERROR: NO PERMISSION";
+                    sendPacket(new Packet(Packet.PacketType.MSG,
+                            name,
+                            action.getSenderID(),
+                            encrypt(requestPrivateKey(action.getSenderID()), String.format("%s -> %s\n", error, action.toString())),
+                            null,
+                            null,
+                            null
+                    ));
+                    Packet p = receivePacket();
+                    if (p.getType() != RECEIVED_CONFIRM) {
+                        // Do something
+                    }
+                }
+                break;
+            }
+            case "CHECK-IN": {
+                boolean success = checkIn(action.getSenderID());
+                if(!success){
+                    sendPacket(new Packet(Packet.PacketType.MSG,
+                            name,
+                            action.getSenderID(),
+                            encrypt(requestPrivateKey(action.getSenderID()), String.format("%s -> %s\n", "Can't check-in error: ", action.toString())),
+                            null,
+                            null,
+                            null
+                    ));
+                    Packet p = receivePacket();
+                    if (p.getType() != RECEIVED_CONFIRM) {
+                        // Do something
+                    }
+                }
+                break;
+            }
+            case "CHECK-OUT": {
+                boolean success = checkOut(action.getSenderID());
+                if(!success){
+                    sendPacket(new Packet(Packet.PacketType.MSG,
+                            name,
+                            action.getSenderID(),
+                            encrypt(requestPrivateKey(action.getSenderID()), String.format("%s -> %s\n", "Can't check-out error: ", action.toString())),
+                            null,
+                            null,
+                            null
+                    ));
+                    Packet p = receivePacket();
+                    if (p.getType() != RECEIVED_CONFIRM) {
+                        // Do something
+                    }
+                }
+                break;
+            }
+            case "NO PERMISSION":
                 sendPacket(new Packet(Packet.PacketType.MSG,
                         name,
-                        action.getFromID(),
-                        encrypt(requestPrivateKey(action.getFromID()),String.format("%s: %s\n", error, action.toString())),
+                        action.getSenderID(),
+                        encrypt(requestPrivateKey(action.getSenderID()), String.format("%s -> %s\n", "ACCESS DENIED: ", action.toString())),
                         null,
                         null,
                         null
                 ));
                 Packet p = receivePacket();
-                if(p.getType() != RECEIVED_CONFIRM){
+                if (p.getType() != RECEIVED_CONFIRM) {
                     // Do something
                 }
-            }
-        }
-        else if(action.getType().equals("SUB")){
-            int success = sub(action.getFromID(), Double.parseDouble(action.getMessageAsString()));
-            if(success != 0){
-                String error;
-                if (success == 1)
-                    error = "ERROR: NOT ENOUGH CASH";
-                else
-                    error = "ERROR: USER DOES NOT HAVE ACCOUNT";
-                sendPacket(new Packet(Packet.PacketType.MSG,
-                        name,
-                        action.getFromID(),
-                        encrypt(requestPrivateKey(action.getFromID()),String.format("%s: %s\n", error, action.toString())),
-                        null,
-                        null,
-                        null
-                ));
-                Packet p = receivePacket();
-                if(p.getType() != RECEIVED_CONFIRM){
-                    // Do something
-                }
-            }
+                break;
+            default:
+                LogMessage("ERROR: Unhandled action was sent to bank!\n %s\n",action.toString());
+                break;
         }
     }
 
     private void socketClose() {
-        // TODO: Handle end of lifetime for this client or for the server
-        //  Socket and streams need to closed as well (prevent memory leaks)
+        try {
+            if(!s.isInputShutdown() && !s.isOutputShutdown()) {
+                objectOutputStream.writeObject(pktLog.newOut(
+                        new Packet(Packet.PacketType.CLOSE,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null)));
+                Packet p = pktLog.newIn(objectInputStream.readObject());
+                if (p.getType() == Packet.PacketType.RECEIVED_CONFIRM) {
+                    objectOutputStream.close();
+                    objectInputStream.close();
+                    s.close();
+                }
+            }
+            else{
+                s.close();
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
     public void shutdown(){
@@ -348,7 +422,7 @@ public class Organisation implements Runnable{
                 objectOutputStream.writeObject(pktLog.newOut(
                         new Packet(Packet.PacketType.MSG_REQUEST,
                                 name,
-                                null,//TODO: id,
+                                null,
                                 null,
                                 null,
                                 null,
@@ -356,7 +430,7 @@ public class Organisation implements Runnable{
                 ));
                 Packet conf = pktLog.newIn(objectInputStream.readObject());
                 if (conf.getType() != RECEIVED_CONFIRM) {
-                    // TODO: Handle!
+                    // NO
                 }
                 // Response from server
                 p = pktLog.newIn(objectInputStream.readObject());
@@ -414,12 +488,19 @@ public class Organisation implements Runnable{
         String actionType = parts[0];
         actionType = actionType.replace(" ", "");
 
-        if(parts.length == 2){
+        if(parts.length == 1){
+            try{
+                this.actions.put(new Action(actionType,sender,null,null,sender));
+            }catch (InterruptedException e){
+                e.printStackTrace();
+            }
+        }
+        else if(parts.length == 2){
             String amount = parts[1];
             amount = amount.replace("]", "");
 
             try {
-                this.actions.put(new Action(actionType, sender, null, amount));
+                this.actions.put(new Action(actionType, sender, null, amount,sender));
             } catch (InterruptedException e){
                 e.printStackTrace();
             }
@@ -428,8 +509,7 @@ public class Organisation implements Runnable{
             String fromId = parts[1];
             fromId = fromId.replace("] ", "");
 
-            if(!fromId.equals(sender)){
-
+            if(!fromId.equals(sender) && !fromId.equals(name)){
                 try {
                     this.actions.put(new Action("NO PERMISSION", sender, null, null));
                     return;
@@ -441,7 +521,7 @@ public class Organisation implements Runnable{
             String amount = parts[2];
             amount = amount.replace("]", "");
             try {
-                this.actions.put(new Action(actionType, fromId, null, amount));
+                this.actions.put(new Action(actionType, fromId, null, amount,sender));
             } catch (InterruptedException e){
                 e.printStackTrace();
             }
@@ -450,51 +530,79 @@ public class Organisation implements Runnable{
             String fromId = parts[1];
             fromId = fromId.replace("] ", "");
 
+            if(!fromId.equals(sender) && !fromId.equals(name)){
+                try {
+                    this.actions.put(new Action("NO PERMISSION", sender, null, null));
+                    return;
+                } catch (InterruptedException e){
+                    e.printStackTrace();
+                }
+            }
+
             String toId = parts[2];
             toId = toId.replace("] ", "");
 
             String amount = parts[3];
             amount = amount.replace("]", "");
             try {
-                this.actions.put(new Action(actionType,fromId,toId,amount));
+                this.actions.put(new Action(actionType,fromId,toId,amount,sender));
             } catch (InterruptedException e){
                 e.printStackTrace();
             }
         }
     }
 
-    private int add(String fromAccount, String toAccount, double amount){
+    private int add(Action action, double amount){
+        String fromAccount = action.getFromID();
+        String toAccount = action.getToID();
         if(checkAccountExist(fromAccount) && checkAccountExist(toAccount)) {
-            if (amount <= balances.get(fromAccount)) {
-                double newBalanceSend = balances.get(fromAccount) - amount;
-                balances.replace(fromAccount, newBalanceSend);
-                double newBalanceRec = balances.get(toAccount) + amount;
-                balances.replace(toAccount, newBalanceRec);
-                return 0;
-            } else {
-                System.out.println("not enough cash");
-                return 1;
+            if (verification(fromAccount, action.getSenderID())) {
+                if (amount <= balances.get(fromAccount)) {
+                    double newBalanceSend = balances.get(fromAccount) - amount;
+                    balances.replace(fromAccount, newBalanceSend);
+                    double newBalanceRec = balances.get(toAccount) + amount;
+                    balances.replace(toAccount, newBalanceRec);
+                    return 0;
+                } else {
+                    LogMessage("not enough cash");
+                    return 1;
+                }
             }
-        }
-        else{
-            System.out.println("One of the two accounts does not exist");
+            else{
+                LogMessage("No permission");
+                return 3;
+            }
+        }else {
+            LogMessage("One of the two accounts does not exist");
             return 2;
         }
     }
 
-    private int sub(String account, double amount){
+    private boolean verification(String fromAccount, String senderID) {
+        if(fromAccount.equals(senderID))
+            return true;
+        else return getRole(senderID) != Role.CUSTOMER && fromAccount.equals(name);
+    }
+
+    private int sub(Action action, double amount){
+        String account = action.getFromID();
         if(checkAccountExist(account)) {
-            if (amount <= balances.get(account)) {
-                double newBalance = balances.get(account) - amount;
-                balances.replace(account, newBalance);
-                return 0;
+            if (verification(account, action.getSenderID())) {
+                if (amount <= balances.get(account)) {
+                    double newBalance = balances.get(account) - amount;
+                    balances.replace(account, newBalance);
+                    return 0;
+                } else {
+                    LogMessage("not enough cash");
+                    return 1;
+                }
             } else {
-                System.out.println("not enough cash");
-                return 1;
+                LogMessage("No permission");
+                return 3;
             }
         }
         else{
-            System.out.println("account does not exist");
+            LogMessage("account does not exist");
             return 2;
         }
     }
@@ -531,13 +639,13 @@ public class Organisation implements Runnable{
     }
     private String requestPrivateKey(String id){
         synchronized (LOCK) {
-            sendPacket(new Packet(Packet.PacketType.PUBLIC_KEY_REQUEST,
+            sendPacket(pktLog.newOut(new Packet(Packet.PacketType.PUBLIC_KEY_REQUEST,
                     null,
                     id,
                     null,
                     null,
                     null,
-                    null));
+                    null)));
             Packet pKeyPacket = receivePacket();
             try {
                 if (pKeyPacket.getType() == Packet.PacketType.PUBLIC_KEY_REQUEST) {
@@ -568,6 +676,7 @@ public class Organisation implements Runnable{
             while(running) {
                 checkMessages();
             }
+            LogMessage("Close MessageHandler");
         }
         public void end(){
             running = false;
@@ -582,6 +691,7 @@ public class Organisation implements Runnable{
             while(running) {
                 handleActions();
             }
+            LogMessage("Close MessageHandler");
         }
         public void end(){
             running = false;

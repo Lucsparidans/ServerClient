@@ -262,7 +262,6 @@ public class Client implements Runnable{
     }
 
     private boolean sendEncryptedMessage(Packet packet){
-        // TODO: Request key
         sendPacket(new Packet(PacketType.PUBLIC_KEY_REQUEST,
                 null,
                 packet.getDestID(),
@@ -290,7 +289,6 @@ public class Client implements Runnable{
             e.printStackTrace();
         }
         String pKey = Objects.requireNonNull(pKeyPacket).getPublicKey();
-        // TODO: Encrypt
         Object o = packet.getData();
         if(o instanceof String){
             packet.setData(Encryption.encrypt(pKey,(String)o));
@@ -308,8 +306,6 @@ public class Client implements Runnable{
             }
             packet.setData(encryptedMessages);
         }
-        // TODO: Send (Using the retries)
-        // TODO: Receive and verify confirmation from server
         try {
             objectOutputStream.writeObject(pktLog.newOut(packet));
             Packet p = pktLog.newIn(objectInputStream.readObject());
@@ -365,7 +361,6 @@ public class Client implements Runnable{
             ));
             Packet conf = pktLog.newIn(objectInputStream.readObject());
             if(conf.getType() != PacketType.RECEIVED_CONFIRM){
-                // TODO: Handle!
             }
             // Response from server
             Packet p = pktLog.newIn(objectInputStream.readObject());
