@@ -14,7 +14,7 @@ public abstract class FileLogger {
     /**
      * Creates a file and logs the traffic into it
      *
-     * @param log
+     * @param log Message that needs to be logged
      */
     public synchronized static void writeLogToFile(String log){
         try {
@@ -36,8 +36,8 @@ public abstract class FileLogger {
     /**
      * Creates a file and logs the messages into it
      *
-     * @param messages
-     * @param clientName
+     * @param messages Messages that need to be sent
+     * @param clientName Name of the person that writes the message
      */
     public synchronized static void writeMessagesToFile(ArrayList<String> messages, String clientName){
         try{

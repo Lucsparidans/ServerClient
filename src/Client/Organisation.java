@@ -192,8 +192,8 @@ public class Organisation implements Runnable{
      * Method that registers a new client into the bank
      *
      *
-     * @param id
-     * @param amount
+     * @param id id of the client that wishes to be registered
+     * @param amount amount of money that the client first deposits in the account
      */
     private void register(String id, Double amount){
         if(!balances.containsKey(id)){
@@ -230,28 +230,6 @@ public class Organisation implements Runnable{
         }
     }
 
-    /**
-     * Method that verifies that the client has the right role to perform an action
-     *
-     *
-     * @param packet
-     * @return boolean
-     */
-    private boolean verification(Packet packet){
-        // TODO: Verify cert and the permission it grants
-        if(packet.getCertificate()!= null){
-            String decryptCert = decrypt(privateKey, packet.getCertificate());
-            if(decryptCert.equals(clients.get(packet.getSenderID()).toString())){
-                return true;
-            }
-            else {
-                return false;
-            }
-        }
-        else{
-            return false;
-        }
-    }
 
     @Override
     public void run() {
@@ -597,8 +575,8 @@ public class Organisation implements Runnable{
     /**
      * Method that will transfer money from an account to another account.
      *
-     * @param action
-     * @param amount
+     * @param action will contain the account from both parties
+     * @param amount that the client wishes to transfer
      * @return integer depending on the error that happened, 0 in case of no error.
      */
     private int add(Action action, double amount){
@@ -627,12 +605,24 @@ public class Organisation implements Runnable{
         }
     }
 
+    /**
+     * Method that verifies that the client has the right role to perform an action
+     * @param fromAccount Account where the transaction will be made
+     * @param senderID ID of the person that will perform 
+     * @return boolean value giving permission or not
+     */
     private boolean verification(String fromAccount, String senderID) {
         if(fromAccount.equals(senderID))
             return true;
         else return getRole(senderID) != Role.CUSTOMER && fromAccount.equals(name);
     }
 
+    /**
+     * Method that subtracts money from an account
+     * @param action will contain the id from the person that performs the transaction
+     * @param amount Amount that the client wishes to subtract
+     * @return
+     */
     private int sub(Action action, double amount){
         String account = action.getFromID();
         if(checkAccountExist(account)) {
@@ -659,8 +649,8 @@ public class Organisation implements Runnable{
     /**
      * Method that checks if the account is registered in the bank
      *
-     * @param account
-     * @return
+     * @param account that needs to be checked
+     * @return boolean value that will tell if the account exist
      */
     private boolean checkAccountExist(String account){
         if(balances.containsKey(account)){
@@ -702,6 +692,12 @@ public class Organisation implements Runnable{
             }
         }
     }
+
+    /**
+     * Method that will return the private key of certain user
+     * @param id id of the user
+     * @return private key
+     */
     private String requestPrivateKey(String id){
         synchronized (LOCK) {
             sendPacket(pktLog.newOut(new Packet(Packet.PacketType.PUBLIC_KEY_REQUEST,
