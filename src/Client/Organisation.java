@@ -44,7 +44,6 @@ public class Organisation implements Runnable{
     private final Object LOCK = new Object();
     private static final int PORT = 4444;
     private String name;
-    private String duration;
 
     private String privateKey;
     private String publicKey;
@@ -635,14 +634,6 @@ public class Organisation implements Runnable{
 
     private int sub(Action action, double amount){
         String account = action.getFromID();
-    /**
-     * Method that will subtract money from the account
-     *
-     * @param account
-     * @param amount
-     * @return integer that will tell the error that happened, 0 in case of no error
-     */
-    private int sub(String account, double amount){
         if(checkAccountExist(account)) {
             if (verification(account, action.getSenderID())) {
                 if (amount <= balances.get(account)) {
