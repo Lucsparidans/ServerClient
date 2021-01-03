@@ -18,6 +18,7 @@
 		"port": "13370"
 	},
 	"actions": [
+		"SEND [6398C613619E4DCA88220ACA49603D87] [HELLO THOMAS]",
 		"SEND [Bank] REGISTER [10000]",
 		"SEND [Bank] CHECK-IN",
 		"SEND [Bank] SUB [Bank] [10000]",

@@ -30,4 +30,9 @@ public class Action {
     }
 
     public String getFromID(){return fromID;}
+
+    @Override
+    public String toString() {
+        return String.format("Action: type %s, fromID %s, toID %s, data %s", type, fromID, toID, message);
+    }
 }

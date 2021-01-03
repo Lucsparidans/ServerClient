@@ -2,6 +2,7 @@ package Client;
 
 import Server.Encryption;
 import Shared.*;
+
 import org.jetbrains.annotations.NotNull;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -16,8 +17,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import static Server.Encryption.*;
 import static Shared.ConsoleLogger.LogMessage;
 import static Shared.Packet.PacketType.RECEIVED_CONFIRM;
 
@@ -141,6 +144,7 @@ public class Organisation implements Runnable{
             clients.put((String)empl.get("id"),
                     Role.valueOf(((JSONArray)empl.get("roles")).get(0).toString().toUpperCase()));
         }
+        balances.put(name, balance);
     }
 
     private Socket connectToServer(@NotNull InetAddress hostAddr, int port) throws InterruptedException {
@@ -173,7 +177,7 @@ public class Organisation implements Runnable{
                         null,
                         null,
                         null,
-                        Encryption.encrypt(publicKey,Role.CUSTOMER.toString())));
+                        encrypt(requestPrivateKey(id),Role.CUSTOMER.toString())));
                 Packet p = receivePacket();
                 if(p.getType() != RECEIVED_CONFIRM){
                     // Do something
@@ -187,7 +191,7 @@ public class Organisation implements Runnable{
                         null,
                         null,
                         null,
-                        Encryption.encrypt(publicKey,clients.get(id).toString())));
+                        encrypt(requestPrivateKey(id),clients.get(id).toString())));
                 Packet p = receivePacket();
                 if(p.getType() != RECEIVED_CONFIRM){
                     // Do something
@@ -199,7 +203,7 @@ public class Organisation implements Runnable{
     private boolean verification(Packet packet){
         // TODO: Verify cert and the permission it grants
         if(packet.getCertificate()!= null){
-            String decryptCert = Encryption.decrypt(privateKey, packet.getCertificate());
+            String decryptCert = decrypt(privateKey, packet.getCertificate());
             if(decryptCert.equals(clients.get(packet.getSenderID()).toString())){
                 return true;
             }
@@ -257,13 +261,17 @@ public class Organisation implements Runnable{
             register(action.getFromID(), Double.parseDouble(action.getMessageAsString()));
         }
         else if(action.getType().equals("ADD")){
-            boolean success = add(action.getFromID(), action.getToID(), Double.parseDouble(action.getMessageAsString()));
-            if(!success){
-                // TODO: SHIT synchronise message to and from
+            int success = add(action.getFromID(), action.getToID(), Double.parseDouble(action.getMessageAsString()));
+            if(success != 0){
+                String error;
+                if (success == 1)
+                    error = "ERROR: NOT ENOUGH CASH";
+                else
+                    error = "ERROR: USER DOES NOT HAVE ACCOUNT";
                 sendPacket(new Packet(Packet.PacketType.MSG,
                         name,
                         action.getFromID(),
-                        "ERROR",
+                        encrypt(requestPrivateKey(action.getFromID()),String.format("%s: %s\n", error, action.toString())),
                         null,
                         null,
                         null
@@ -275,12 +283,17 @@ public class Organisation implements Runnable{
             }
         }
         else if(action.getType().equals("SUB")){
-            boolean success = sub(action.getFromID(), Double.parseDouble(action.getMessageAsString()));
-            if(!success){
+            int success = sub(action.getFromID(), Double.parseDouble(action.getMessageAsString()));
+            if(success != 0){
+                String error;
+                if (success == 1)
+                    error = "ERROR: NOT ENOUGH CASH";
+                else
+                    error = "ERROR: USER DOES NOT HAVE ACCOUNT";
                 sendPacket(new Packet(Packet.PacketType.MSG,
                         name,
                         action.getFromID(),
-                        "ERROR",
+                        encrypt(requestPrivateKey(action.getFromID()),String.format("%s: %s\n", error, action.toString())),
                         null,
                         null,
                         null
@@ -337,16 +350,16 @@ public class Organisation implements Runnable{
                 Object o = p.getData();
                 String t = new SimpleDateFormat("dd-MM-yyyy,HH:mm").format(new Date());
                 if (o instanceof String) {
-                    String message = Encryption.decrypt(this.privateKey, (String) o);
-                    parseAction(message);
+                    String message = decrypt(this.privateKey, (String) o);
+                    parseAction(message, null);
                     message =  t + "-> " + message;
                     receivedMessages.add(message);
                     LogMessage("Message %s\n", message);
 
                 } else if (o instanceof Message) {
-                    String message = Encryption.decrypt(this.privateKey, ((Message) o).getMessage());
+                    String message = decrypt(this.privateKey, ((Message) o).getMessage());
                     receivedMessages.add(message);
-                    parseAction(message);
+                    parseAction(message, ((Message) o).getSender());
                     message = t + "-> " + message;
                     receivedMessages.add(message);
                     LogMessage("Message %s\n", message);
@@ -355,8 +368,8 @@ public class Organisation implements Runnable{
                     ArrayList<?> messages = (ArrayList<?>) o;
                     for (Object message : messages) {
                         Message m = (Message) message;
-                        String decryptedMessage = Encryption.decrypt(this.privateKey, m.getMessage());
-                        parseAction(decryptedMessage);
+                        String decryptedMessage = decrypt(this.privateKey, m.getMessage());
+                        parseAction(decryptedMessage, ((Message) message).getSender());
                         decryptedMessage = t + "-> " + decryptedMessage;
                         receivedMessages.add(decryptedMessage);
                         LogMessage("Message %s\n", decryptedMessage);
@@ -370,13 +383,23 @@ public class Organisation implements Runnable{
         }
     }
 
-    private void parseAction(String action){
+    private void parseAction(String action, String sender){
         String[] parts = action.toString().split("\\[");
 
         String actionType = parts[0];
         actionType = actionType.replace(" ", "");
 
-        if(parts.length == 3){
+        if(parts.length == 2){
+            String amount = parts[1];
+            amount = amount.replace("]", "");
+
+            try {
+                this.actions.put(new Action(actionType, sender, null, amount));
+            } catch (InterruptedException e){
+                e.printStackTrace();
+            }
+        }
+        else if(parts.length == 3){
             String fromId = parts[1];
             fromId = fromId.replace("] ", "");
 
@@ -405,39 +428,39 @@ public class Organisation implements Runnable{
         }
     }
 
-    private boolean add(String fromAccount, String toAccount, double amount){
+    private int add(String fromAccount, String toAccount, double amount){
         if(checkAccountExist(fromAccount) && checkAccountExist(toAccount)) {
-            if (amount >= balances.get(fromAccount)) {
+            if (amount <= balances.get(fromAccount)) {
                 double newBalanceSend = balances.get(fromAccount) - amount;
                 balances.replace(fromAccount, newBalanceSend);
                 double newBalanceRec = balances.get(toAccount) + amount;
                 balances.replace(toAccount, newBalanceRec);
-                return true;
+                return 0;
             } else {
                 System.out.println("not enough cash");
-                return false;
+                return 1;
             }
         }
         else{
             System.out.println("One of the two accounts does not exist");
-            return false;
+            return 2;
         }
     }
 
-    private boolean sub(String account, double amount){
+    private int sub(String account, double amount){
         if(checkAccountExist(account)) {
-            if (amount >= balances.get(account)) {
+            if (amount <= balances.get(account)) {
                 double newBalance = balances.get(account) - amount;
                 balances.replace(account, newBalance);
-                return true;
+                return 0;
             } else {
                 System.out.println("not enough cash");
-                return false;
+                return 1;
             }
         }
         else{
             System.out.println("account does not exist");
-            return false;
+            return 2;
         }
     }
 
@@ -471,8 +494,38 @@ public class Organisation implements Runnable{
             }
         }
     }
+    private String requestPrivateKey(String id){
+        synchronized (LOCK) {
+            sendPacket(new Packet(Packet.PacketType.PUBLIC_KEY_REQUEST,
+                    null,
+                    id,
+                    null,
+                    null,
+                    null,
+                    null));
+            Packet pKeyPacket = receivePacket();
+            try {
+                if (pKeyPacket.getType() == Packet.PacketType.PUBLIC_KEY_REQUEST) {
+                    objectOutputStream.writeObject(pktLog.newOut(new Packet(Packet.PacketType.RECEIVED_CONFIRM,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null)));
+                } else {
+                    // UNKNOWN USER ERROR
+                    LogMessage("Trying to send message to unknown user!");
+                    return null;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return Objects.requireNonNull(pKeyPacket).getPublicKey();
+        }
+    }
 
-    public class MessageHandler implements Runnable{
+    private class MessageHandler implements Runnable{
         private boolean running;
         @Override
         public void run() {
@@ -486,7 +539,7 @@ public class Organisation implements Runnable{
         }
     }
 
-    public class ActionHandler implements Runnable{
+    private class ActionHandler implements Runnable{
         private boolean running;
         @Override
         public void run() {

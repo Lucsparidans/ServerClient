@@ -148,7 +148,7 @@ public class Client implements Runnable{
         LogMessage("Started client on thread: %s\n",Thread.currentThread().getName());
         long endTime;
         if(DEBUG){
-            endTime = System.currentTimeMillis() + Long.parseLong(this.duration);
+            endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 100L;
         }
         else{
             endTime = System.currentTimeMillis() + Long.parseLong(this.duration) * 1000L;
@@ -293,9 +293,6 @@ public class Client implements Runnable{
         // TODO: Encrypt
         Object o = packet.getData();
         if(o instanceof String){
-            if(pKey == null){
-                System.out.println("Heeeeelpp");
-            }
             packet.setData(Encryption.encrypt(pKey,(String)o));
         }else if(o instanceof Message){
             Message msg = (Message)o;
