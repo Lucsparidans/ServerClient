@@ -287,11 +287,12 @@ public class Organisation implements Runnable{
             e.printStackTrace();
         }
 
-        LogMessage("Client on: %s closing down!\n  Cause: End of lifetime reached.\n", Thread.currentThread().getName());
+        LogMessage("%s on: %s closing down!\n", name, Thread.currentThread().getName());
         socketClose();
 
         // Print all logged packets
         FileLogger.writeLogToFile(pktLog.getLoggedSequence());
+        FileLogger.writeMessagesToFile(receivedMessages,name);
     }
 
     /**
