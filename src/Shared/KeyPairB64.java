@@ -4,7 +4,7 @@ public class KeyPairB64 {
     private final String pvt;
     private final String pub;
 
-    public KeyPairB64(String pvt, String pub) {
+    public KeyPairB64(String pub, String pvt) {
         this.pvt = pvt;
         this.pub = pub;
     }
