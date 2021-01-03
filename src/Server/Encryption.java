@@ -12,6 +12,12 @@ import java.util.Base64;
 
 public class Encryption {
 
+    /**
+     * this method encrypts a message
+     * @param stringPubKey
+     * @param text
+     * @return the encrypted message
+     */
     public static String encrypt(String stringPubKey, String text){
 
         try {
@@ -29,6 +35,12 @@ public class Encryption {
         return null;
     }
 
+    /**
+     * this method decrypts a message
+     * @param stringPrvKey
+     * @param text
+     * @return the decrypted message
+     */
     public static String decrypt(String stringPrvKey, String text) {
 
         try {

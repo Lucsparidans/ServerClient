@@ -11,6 +11,11 @@ public abstract class FileLogger {
     private static final String baseDirTraffic = "logs/traffic/";
     private static final String baseDirMessages = "logs/messages/";
 
+    /**
+     * Creates a file and logs the traffic into it
+     *
+     * @param log Message that needs to be logged
+     */
     public synchronized static void writeLogToFile(String log){
         try {
             String newFileName = baseDirTraffic + getTimeStamp();
@@ -27,6 +32,13 @@ public abstract class FileLogger {
             ioException.printStackTrace();
         }
     }
+
+    /**
+     * Creates a file and logs the messages into it
+     *
+     * @param messages Messages that need to be sent
+     * @param clientName Name of the person that writes the message
+     */
     public synchronized static void writeMessagesToFile(ArrayList<String> messages, String clientName){
         try{
             String newFileName = baseDirMessages + clientName + getTimeStamp();
@@ -35,6 +47,14 @@ public abstract class FileLogger {
             ioException.printStackTrace();
         }
     }
+
+    /**
+     * Creates a file
+     *
+     * @param data
+     * @param newFileName
+     * @throws IOException
+     */
     private static void makeFile(String data, String newFileName) throws IOException {
         String fileExtension = ".txt";
         File f = new File(newFileName + fileExtension);

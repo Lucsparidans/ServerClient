@@ -204,6 +204,10 @@ public class Client implements Runnable{
         parseActions((JSONArray) jsonObject.get("actions"));
     }
 
+    /**
+     * Method that parses the actions which has to be processed and are stored in a JSONArray
+     * @param actions JSONArray storing the different actions for a specific client
+     */
     private void parseActions(JSONArray actions){
         for (Object action : actions) {
             String[] parts = action.toString().split(" ", 2);
@@ -227,6 +231,9 @@ public class Client implements Runnable{
         }
     }
 
+    /**
+     * Method executing the current action of the client
+     */
     private void executeAction(){
         if(!this.actions.isEmpty()){
             LogMessage("Executing action");
@@ -261,6 +268,12 @@ public class Client implements Runnable{
         }
     }
 
+    /**
+     * Boolean method sending an encrypted message if the client has to send a message after getting
+     * the public key of the receiver to encrypt the message.
+     * @param packet Packet storing information regarding a message.
+     * @return true if the message is successfully transmitted and false if it is not.
+     */
     private boolean sendEncryptedMessage(Packet packet){
         sendPacket(new Packet(PacketType.PUBLIC_KEY_REQUEST,
                 null,
@@ -326,6 +339,9 @@ public class Client implements Runnable{
         return false;
     }
 
+    /**
+     * Method to close a socket after the lifetime of the client has expired
+     */
     private void socketClose(){
         try {
             objectOutputStream.writeObject(pktLog.newOut(
@@ -347,6 +363,10 @@ public class Client implements Runnable{
         }
 
     }
+
+    /**
+     * Method checking if the client has any unread messages
+     */
     private void checkMessages(){
         try{
             // Request messages from the server for this client
@@ -401,7 +421,11 @@ public class Client implements Runnable{
             e.printStackTrace();
         }
     }
-    // region PacketIO
+
+    /**
+     * Method giving access to the different packets received by the client and adding it to the logs of Packets for the client
+     * @return a Packet object just received
+     */
     private Packet receivePacket(){
         try {
             return pktLog.newIn(objectInputStream.readObject());
@@ -410,6 +434,11 @@ public class Client implements Runnable{
         }
         return null;
     }
+
+    /**
+     * Method sending packets to other clients,waiting for a confirmation and adding it to the logs of the client
+     * @param p Packet object to be sent to another client
+     */
     private void sendPacket(Packet p){
         try {
             objectOutputStream.writeObject(pktLog.newOut(p));
@@ -419,5 +448,4 @@ public class Client implements Runnable{
             e.printStackTrace();
         }
     }
-    // endregion
 }
