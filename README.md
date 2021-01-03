@@ -43,10 +43,21 @@ The PacketType enum is a way to create an indicator of the content of the Packet
 ### JSON_files
 6 JSON files including five clients configs and one for the organizations, all storing the respective client's data and set of actions
 
-##How to Run
+## How to Run
 1. Go to _Edit configurations_
 2. Add App.java as _application_ (and allow multiple instances if needed)
 3. Add Server.java as _application_ (and allow multiple instances if needed)
 4. Create a _Compound_ using the aforementioned applications
 5. Run the _Compound_
 6. After the process is complete, if you want to close the server, you can type "Quit" in the command prompt
+
+
+## Limitations
+There were a few details within the taks description that we decided were not possible given our model or did not make sense.
+1. We found having to bind multiple ServerSockets to different threads, in order to cover multiple ports for the same ip, too elaborate to implement.
+2. Verification of delivering data over the connection was somewhat implemnted but since java Sockets use TCP which is reliable, there is no real reason to chack for this.
+3. The 2nd point also explains why we did not use retries for sending data, but we did use them for opening connections.
+4. Names were coonsidered as being unique since the assignment states that one has to be able to send a message to another client using only their name. In case there would be
+multiple people that have the same name having names that are not unique does not make sense!
+5. Given the amount of time and points that this assignment gives us, the amount of work that needed to be done to complete this assignment was out of proportion in our opinion.
+6. Some aspects that needed to be known in order to do this assingment were not taught appropriately.
