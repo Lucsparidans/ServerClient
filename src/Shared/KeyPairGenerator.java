@@ -5,6 +5,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
 public abstract class KeyPairGenerator {
+    /**
+     * Generates a private and public key
+     * @return private and public key
+     */
     public static KeyPairB64 generateRSAKeyPair() {
         try {
             java.security.KeyPairGenerator kpg = java.security.KeyPairGenerator.getInstance("RSA");
