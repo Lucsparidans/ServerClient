@@ -69,6 +69,7 @@ public class Organisation implements Runnable{
         }
     }
     private final HashMap<String, Role> clients = new HashMap<>();
+    private final HashMap<String, Boolean> checkIn = new HashMap<>();
     private final HashMap<String, Double> balances = new HashMap<>();
     private final LinkedBlockingQueue<Action> actions = new LinkedBlockingQueue<>();
 
@@ -143,6 +144,7 @@ public class Organisation implements Runnable{
             JSONObject empl = (JSONObject) o;
             clients.put((String)empl.get("id"),
                     Role.valueOf(((JSONArray)empl.get("roles")).get(0).toString().toUpperCase()));
+            checkIn.put((String)empl.get("id"),false);
         }
         balances.put(name, balance);
     }
@@ -161,6 +163,29 @@ public class Organisation implements Runnable{
             }
         }
         return sock;
+    }
+
+    private Role getRole(String id){
+        if(checkIn.containsKey(id)){
+            if(checkIn.get(id)){
+                return clients.get(id);
+            }
+        }
+        return Role.CUSTOMER;
+    }
+    private boolean checkIn(String id){
+        if(checkIn.containsKey(id)){
+            checkIn.replace(id, true);
+            return true;
+        }
+        return false;
+    }
+    private boolean checkOut(String id){
+        if(checkIn.containsKey(id)){
+            checkIn.replace(id, false);
+            return true;
+        }
+        return false;
     }
 
     private void register(String id, Double amount){
@@ -191,7 +216,7 @@ public class Organisation implements Runnable{
                         null,
                         null,
                         null,
-                        encrypt(requestPrivateKey(id),clients.get(id).toString())));
+                        encrypt(requestPrivateKey(id),getRole(id).toString())));
                 Packet p = receivePacket();
                 if(p.getType() != RECEIVED_CONFIRM){
                     // Do something
@@ -384,7 +409,7 @@ public class Organisation implements Runnable{
     }
 
     private void parseAction(String action, String sender){
-        String[] parts = action.toString().split("\\[");
+        String[] parts = action.split("\\[");
 
         String actionType = parts[0];
         actionType = actionType.replace(" ", "");
@@ -402,6 +427,16 @@ public class Organisation implements Runnable{
         else if(parts.length == 3){
             String fromId = parts[1];
             fromId = fromId.replace("] ", "");
+
+            if(!fromId.equals(sender)){
+
+                try {
+                    this.actions.put(new Action("NO PERMISSION", sender, null, null));
+                    return;
+                } catch (InterruptedException e){
+                    e.printStackTrace();
+                }
+            }
 
             String amount = parts[2];
             amount = amount.replace("]", "");
