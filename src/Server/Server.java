@@ -90,11 +90,20 @@ public class Server {
         }
     }
 
+    /**
+     * Method closes an active client connected with the clienthandler
+     * @param clientHandler
+     */
     public static void close(ClientHandler clientHandler) {
         SESSIONS.remove(clientHandler);
         THREAD_BY_CLIENT.remove(clientHandler);
     }
 
+    /**
+     * Method checks for messages
+     * @param id
+     * @return All messages for that peron
+     */
     public static ArrayList<Message> checkMessages(String id){
         synchronized (LOCK) {
             if(MSG_BY_ID.get(id).size() > 0) {
@@ -108,6 +117,11 @@ public class Server {
         }
     }
 
+    /**
+     * Method sends a messages to another person, saves it in the message list
+     * @param pkt packet, that holds all information for the message
+     * @return if it was successful
+     */
     public static boolean sendMessage(Packet pkt) {
         synchronized (LOCK) {
             if (pkt.getDestID() != null) {
@@ -180,6 +194,10 @@ public class Server {
             }
         }
     }
+
+    /**
+     * Method initializes organisations from JSON file
+     */
     private static void initializeOrganisations(){
         JSONParser jsonParser = new JSONParser();
         try{
@@ -200,6 +218,9 @@ public class Server {
         }
     }
 
+    /**
+     * A class that initializes organisations
+     */
     private static class InitOrgs implements Runnable{
         @Override
         public void run() {
@@ -207,6 +228,12 @@ public class Server {
         }
     }
 
+    /**
+     * Checks if a person is in the data base, this can be done by ID or name
+     * @param data ID/name
+     * @param type says what type of data it is
+     * @return true if in database else false
+     */
     public static boolean isInDataBase(String data, ClientIDType type){
         synchronized (LOCK) {
             if (type == ClientIDType.NAME) {
@@ -233,6 +260,9 @@ public class Server {
         }
     }
 
+    /**
+     * Closes down the server, it shuts off any running organisations and clients
+     */
     private static void close(){
         ORGS.forEach(Organisation::shutdown);
         ORG_THREADS.forEach(thread -> {
@@ -250,6 +280,9 @@ public class Server {
         }
     }
 
+    /**
+     * Stops the server and all active clients when "Quit" is typed in the terminal
+     */
     private static class InputHandler implements Runnable {
         @Override
         public void run() {
