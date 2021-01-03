@@ -188,6 +188,13 @@ public class Organisation implements Runnable{
         return false;
     }
 
+    /**
+     * Method that registers a new client into the bank
+     *
+     *
+     * @param id
+     * @param amount
+     */
     private void register(String id, Double amount){
         // TODO: IO and exchange certs
         if(!balances.containsKey(id)){
@@ -225,6 +232,13 @@ public class Organisation implements Runnable{
         }
     }
 
+    /**
+     * Method that verifies that the client has the right role to perform an action
+     *
+     *
+     * @param packet
+     * @return boolean
+     */
     private boolean verification(Packet packet){
         // TODO: Verify cert and the permission it grants
         if(packet.getCertificate()!= null){
@@ -273,6 +287,9 @@ public class Organisation implements Runnable{
 
     }
 
+    /**
+     * Method that handles the actions, works in synchronization with checkmessages
+     */
     private void handleActions() {
         // TODO: Handle list of pending actions
         Action action = null;
@@ -340,6 +357,10 @@ public class Organisation implements Runnable{
         running = false;
     }
 
+    /**
+     *
+     * Method that will check for incoming messages from the server
+     */
     private void checkMessages(){
         try{
             Packet p;
@@ -408,6 +429,11 @@ public class Organisation implements Runnable{
         }
     }
 
+    /**
+     * Gets actions from a client and makes them executable
+     * @param action
+     * @param sender
+     */
     private void parseAction(String action, String sender){
         String[] parts = action.split("\\[");
 
@@ -463,6 +489,14 @@ public class Organisation implements Runnable{
         }
     }
 
+    /**
+     * Method that will transfer money from an account to another account.
+     *
+     * @param fromAccount
+     * @param toAccount
+     * @param amount
+     * @return integer depending on the error that happened, 0 in case of no error.
+     */
     private int add(String fromAccount, String toAccount, double amount){
         if(checkAccountExist(fromAccount) && checkAccountExist(toAccount)) {
             if (amount <= balances.get(fromAccount)) {
@@ -482,6 +516,13 @@ public class Organisation implements Runnable{
         }
     }
 
+    /**
+     * Method that will subtract money from the account
+     *
+     * @param account
+     * @param amount
+     * @return integer that will tell the error that happened, 0 in case of no error
+     */
     private int sub(String account, double amount){
         if(checkAccountExist(account)) {
             if (amount <= balances.get(account)) {
@@ -499,6 +540,12 @@ public class Organisation implements Runnable{
         }
     }
 
+    /**
+     * Method that checks if the account is registered in the bank
+     *
+     * @param account
+     * @return
+     */
     private boolean checkAccountExist(String account){
         if(balances.containsKey(account)){
             return true;
@@ -508,6 +555,11 @@ public class Organisation implements Runnable{
         }
     }
 
+    /**
+     * Method that will receive a packet
+     *
+     * @return packet
+     */
     private Packet receivePacket(){
         synchronized (LOCK) {
             try {
@@ -518,6 +570,11 @@ public class Organisation implements Runnable{
             return null;
         }
     }
+
+    /**
+     * Method that will send a packet
+     * @param p
+     */
     private void sendPacket(Packet p){
         synchronized (LOCK) {
             try {
@@ -560,6 +617,9 @@ public class Organisation implements Runnable{
         }
     }
 
+    /**
+     * Runs check message
+     */
     private class MessageHandler implements Runnable{
         private boolean running;
         @Override
@@ -574,6 +634,9 @@ public class Organisation implements Runnable{
         }
     }
 
+    /**
+     * Runs handleActions
+     */
     private class ActionHandler implements Runnable{
         private boolean running;
         @Override
